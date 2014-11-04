@@ -2,6 +2,7 @@
 convergence.py
 parasynchrony
 Brandon Mechtley 2014
+Reuman Lab, Kansas Biological Survey
 
 This utility is used to test the symbolic result for cross-spectra produced by
 models.py by simulating data out to various numbers of timesteps and comparing
@@ -27,9 +28,9 @@ The JSON configuration files are formatted as follows:
     }
 }
 
-PyBatchDict is used to specify multiple runs with, e.g. different CSD window
-sizes. See convergence/nbd2/config.json and convergence/ar1/config.json for
-examples.
+[PyBatchDict](http://github.com/plant/pybatchdict) is used to specify multiple
+runs with, e.g. different CSD window sizes. See convergence/nbd2/config.json
+and convergence/ar1/config.json for examples.
 
 Commands:
     run: Simulate the model and compute all spectra. Saves pickle files with
