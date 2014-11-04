@@ -2,6 +2,7 @@
 models.py
 parasynchrony
 2014 Brandon Mechtley
+Reuman Lab, Kansas Biological Survey
 
 Module for various stochastic difference equation models. In addition to a few
 helper functions (mostly involved with plotting simulated results), this module
@@ -30,8 +31,6 @@ import matplotlib.mlab as mlab
 import matplotlib.pyplot as pp
 import matplotlib.gridspec as gridspec
 
-import statsmodels.tsa as tsa
-
 
 def symlog(x):
     """
@@ -43,7 +42,7 @@ def symlog(x):
 
     dtype = type(x) if type(x) != np.ndarray else x.dtype
 
-    return np.log(np.abs(x) + np.finfo(dtype).eps) * np.sign(x)
+    return np.log(abs(x) + np.finfo(dtype).eps) * np.sign(x)
 
 
 def smooth(x, window='boxcar', p=0.5, q=0.5):
@@ -104,8 +103,7 @@ def spectrum(series, **csdargs):
     for i, j in itertools.combinations_with_replacement(range(nstates), 2):
         spec, _ = mlab.csd(series[i], series[j], **csdargs)
 
-        # mlab.csd scales all values by a factor of two. Not entirely sure why.
-        # TODO: Figure out why.
+        # TODO: mlab.csd scales all values by a factor of two. Not sure why.
         sxy[i, j] = sxy[i, j] = spec[:, 0] / 2
 
     return freqs, sxy
@@ -374,6 +372,8 @@ class StochasticModel:
     # complete stattools's ARMA implementation is for the multivariate case,
     # though.
 
+    # TODO: look at greenman and benton for magnitude of peak
+
     def __init__(self, symvars, noises, equation):
         """
         Initialize a model object.
@@ -405,8 +405,8 @@ class StochasticModel:
         """Find the [first] non-trivial equilibrium point."""
 
         # TODO: This currently assumes there's one non-trivial equilibrium
-        # point and that it's the second returned by SymPy's solve(). That's a
-        # dangerous assumption.
+        # TODO:     point and that it's the second returned by SymPy's solve().
+        # TODO:     That's a dangerous assumption.
 
         eq = sym.solve(
             sym.Eq(self.vars, self.deterministic),
@@ -434,6 +434,48 @@ class StochasticModel:
         self.m1 = self.deterministic.jacobian(self.vars).subs(subs)
         self.q0 = self.stochastic.jacobian(self.noises).subs(subs)
 
+    def get_cached_matrices(self, params):
+        """
+        Cache m1/q0 matrices for the given parameter values to avoid
+        recomputing each time we want to compute spectral properties for the
+        same parameter values (e.g. computing the full spectral matrix at
+        multiple frequencies).
+
+        :param params (dict): dictionary of parameter values with SymPy symbol
+            keys.
+        :return (dict): dictionary with two keys, 'm1' and 'q0', each
+            containing a numpy array for the matrix evaluated at the parameter
+            values.
+        """
+
+        if self.m1 is None or self.q0 is None:
+            self.linearize()
+
+        phash = hash(frozenset(params.items()))
+        self.cache.setdefault(phash, {})
+        cached = self.cache[phash]
+
+        if 'm1' not in cached:
+            cached['m1'] = eval_matrix(self.m1.subs(params))
+
+        if 'q0' not in cached:
+            cached['q0'] = eval_matrix(self.q0.subs(params))
+
+        return cached
+
+    def calculate_eigenvalues(self, params):
+        """
+        Calculate the dominant frequency of oscillation for the linearized
+        model. This will be the same for all cross-spectra.
+
+        :param params (dict): dictionary of parameter values with SymPy symbol
+            keys.
+        :return (float): frequency of the system's oscillation.
+        """
+
+        cached = self.get_cached_matrices(params)
+        return np.linalg.eig(cached['m1'])
+
     def calculate_spectrum(self, params, covariance, v=0):
         """
         Calculate the spectral matrix according to the model linearized around
@@ -448,19 +490,7 @@ class StochasticModel:
             variables.
         """
 
-        if self.m1 is None or self.q0 is None:
-            self.linearize()
-
-        # Cache m1/q0 matrices for the given parameters to avoid recomputing
-        # each time we want to compute the spectral matrix at a different
-        # frequency.
-
-        phash = hash(frozenset(params.items()))
-        self.cache.setdefault(phash, {})
-        cached = self.cache[phash]
-
-        if 'm1' not in cached: cached['m1'] = eval_matrix(self.m1.subs(params))
-        if 'q0' not in cached: cached['q0'] = eval_matrix(self.q0.subs(params))
+        cached = self.get_cached_matrices(params)
 
         # Mu is the spectral component.
         mu = np.exp(-2j * np.pi * v)
@@ -603,6 +633,19 @@ class Parasitism:
     representing host-parasitoid interactions.
     """
 
+    # TODO: organize h-p-h-p so that my jacobian is a block-symmetric matrix
+    # TODO:     where each block is a patch
+
+    # TODO: look up eigenvalues of block matrices (det(A)det(B) - det(C)det(D))
+    # TODO:     [AB;CD]
+
+    # TODO: extend main theorem to come up with lemmas for spectral peaks /
+    # TODO:     magnitudes, possibly for special cases. Simplify these in terms
+    # TODO:     of general parameters for any model that includes symmetric
+    # TODO:     migration and specifically for each model, to factor out any
+    # TODO:     parameters that do not affect either the location of the peak
+    # TODO:     or its magnitude.
+
     params = dict(
         a=sym.Symbol('a', positive=True),
         r=sym.Symbol('\lambda', positive=True),
@@ -726,9 +769,9 @@ class Parasitism:
             # and parasitoids only migrate to other parasitoids.
             #
             # TODO: This will NOT work, e.g. with AR1 or any non host-parasitoid
-            # model or multispecies model. Only for models where there are
-            # one host and one parasitoid per patch, and hosts precede
-            # parasitoids in the list of state variables.
+            # TODO:     model or multispecies model. Only for models where there
+            # TODO:     are one host and one parasitoid per patch, and hosts
+            # TODO:     precede parasitoids in the list of state variables.
 
             migrationmat = sym.zeros(npatches * 2)
 
