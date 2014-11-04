@@ -2,6 +2,7 @@
 variants.py
 parasynchrony
 2014 Brandon Mechtley
+Reuman Lab, Kansas Biological Survey
 
 Plot analytic cross-spectra for a variety of model variants specified by a
 pybatchdict JSON config file.
@@ -112,14 +113,12 @@ def plot(configfile, separate=False):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print 'Usage: python variants.py {plot} [arg] [config.json]'
-    elif sys.argv[1] == 'plot':
-        if len(sys.argv) > 3:
-            plot(sys.argv[3], sys.argv[2] == 'separate')
-        else:
-            plot(sys.argv[2])
-    pass
+    if len(sys.argv) < 1:
+        print 'Usage: python variants.py [separate] config.json'
+    elif len(sys.argv) > 2:
+        plot(sys.argv[2], sys.argv[1] == 'separate')
+    else:
+        plot(sys.argv[1])
 
 if __name__ == '__main__':
     main()
