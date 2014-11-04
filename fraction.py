@@ -2,6 +2,7 @@
 fraction.py
 parasynchrony
 2014 Brandon Mechtley
+Reuman Lab, Kansas Biological Survey
 
 This is a quick script to demonstrate the fraction of synchrony for which
 each possible source is responsible in the two-patch negative binomial model.
@@ -34,8 +35,9 @@ import matplotlib.pyplot as pp
 import models
 
 # 1. Model parameters.
+# TODO: Maybe use pybatchdict for these.
 model = models.Parasitism.get_model("nbd(2)")
-params = [
+params = np.array([
     [
         dict(
             r=3.0,
@@ -46,18 +48,18 @@ params = [
             mp=migration_parasitoid
         ) for migration_parasitoid in [0, 0.05]
     ] for migration_host in [0, 0.05]
-]
+])
 
-covariance = [
+covariance = np.array([
     [
-        np.array([
+        [
             [1E-2, moran_host, 0, 0],
             [moran_host, 1E-2, 0, 0],
             [0, 0, 1E-2, moran_parasitoid],
             [0, 0, moran_parasitoid, 1E-2]
-        ]) for moran_parasitoid in [0, 1E-4]
+        ] for moran_parasitoid in [0, 1E-4]
     ] for moran_host in [0, 1E-4]
-]
+])
 
 nfreqs = 4000
 freqs = np.linspace(0, 0.5, nfreqs)
@@ -66,26 +68,35 @@ nvars = len(model.vars)
 # 2. Compute the spectra for each combination of migration, moran in host and
 # parasitoid.
 spectra = np.zeros((2, 2, 2, 2, nvars, nvars, nfreqs))
+oscfreqs = np.zeros((2, 2, 2, 2, 4))
+oscmags = np.zeros((2, 2, 2, 2, 4))
+
 for migh, migp, morh, morp in itertools.product(range(2), repeat=4):
+    sym_params = {
+        models.Parasitism.params[name]: value
+        for name, value in params[migh, migp].iteritems()
+    }
+
     spectra[morh, morp, migh, migp] = np.array([
-        model.calculate_spectrum(
-            {
-                models.Parasitism.params[name]: value
-                for name, value in params[migh][migp].iteritems()
-            },
-            covariance[morh][morp],
-            v
-        ) for v in freqs
+        model.calculate_spectrum(sym_params, covariance[morh, morp], v)
+        for v in freqs
     ]).T
 
-magspecall = np.abs(spectra[1, 1, 1, 1])
+    eigvals, eigvecs = model.calculate_eigenvalues(sym_params)
+    oscfreqs[morh, morp, migh, migp] = np.angle(eigvals) / (2 * np.pi)
+    oscmags[morh, morp, migh, migp] = abs(eigvals)
+
+    print morh, morp, migh, migp, oscfreqs[morh, morp, migh, migp]
+    print morh, morp, migh, migp, oscmags[morh, morp, migh, migp]
+
+magspecall = abs(spectra[1, 1, 1, 1])
 
 # 3. Plot cross-spectra and fraction of synchrony.
 fig, ax = pp.subplots(16, 4, figsize=(8.5, 22))
 
 for i, ctuple in enumerate(itertools.product(range(2), repeat=4)):
     print "Plotting %d: %d %d %d %d" % ((i,) + ctuple)
-    magspec = np.abs(spectra[ctuple])
+    magspec = abs(spectra[ctuple])
 
     for sp, cell, name in zip([0, 2], [(0, 1), (2, 3)], ['H', 'P']):
         # sp: index of first subplot column. 0 for host, 2 for parasitoid.
@@ -123,6 +134,13 @@ for i, ctuple in enumerate(itertools.product(range(2), repeat=4)):
             np.mean(magspec[cell]) / np.mean(magspecall[cell]) * 100,
             color='purple'
         )
+
+        # Plot vertical line at the dominant frequency in both subplots.
+        for mag, freq in itertools.izip(oscmags[ctuple], oscfreqs[ctuple]):
+            ax[i, sp].axhline(mag, color='green')
+
+            ax[i, sp].axvline(freq, color='green')
+            ax[i, sp+1].axvline(freq, color='green')
 
 # Titles.
 ax[0, 0].set_title('H-H magnitude')
