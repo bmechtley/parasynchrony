@@ -107,7 +107,7 @@ def plot_series(picklefile):
 
         models.plot_phase(
             series[run],
-            varnames='H_1 H_2 P_1 P_2'.split(' '),
+            varnames='H_1 H_2 P_1 P_2'.split(),
             logscale=ls,
             plotfun=pp.hist2d,
             bins=400,
