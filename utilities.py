@@ -2,6 +2,7 @@
 utilities.py
 parasynchrony
 2014 Brandon Mechtley
+Reuman Lab, Kansas Biological Survey
 
 Various utility helper functions shared between the different analysis scripts.
 """
