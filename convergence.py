@@ -1,6 +1,6 @@
 """
 convergence.py
-parasitoids
+parasynchrony
 Brandon Mechtley 2014
 
 This utility is used to test the symbolic result for cross-spectra produced by
@@ -213,6 +213,7 @@ def plot_complex(srcfile, separate=False):
             figpath = os.path.join(dirname, 'complex-%s.png' % specname)
             print 'Writing %s.' % figpath
             pp.savefig(figpath)
+
 
 def plot_spectra(srcfile, separate=False):
     """

@@ -1,6 +1,6 @@
 """
 utilities.py
-parasitoids
+parasynchrony
 2014 Brandon Mechtley
 
 Various utility helper functions shared between the different analysis scripts.

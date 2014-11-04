@@ -1,6 +1,6 @@
 """
 fraction.py
-parasitoids
+parasynchrony
 2014 Brandon Mechtley
 
 This is a quick script to demonstrate the fraction of synchrony for which

@@ -1,6 +1,6 @@
 """
 variants.py
-parasitoids
+parasynchrony
 2014 Brandon Mechtley
 
 Plot analytic cross-spectra for a variety of model variants specified by a

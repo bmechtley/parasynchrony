@@ -1,6 +1,6 @@
 """
 models.py
-parasitoids
+parasynchrony
 2014 Brandon Mechtley
 
 Module for various stochastic difference equation models. In addition to a few
