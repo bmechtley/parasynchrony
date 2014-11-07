@@ -52,6 +52,8 @@ Commands:
         order of the configuration.
 """
 
+# TODO: Median for power, mean for unit phasors.
+
 import itertools
 import cPickle
 import sys
@@ -251,7 +253,9 @@ def plot_spectra(srcfile, separate=False):
 
         colordict = {
             'linear_smoothed': ((1, v, 0), 'y'),
-            'nonlinear_smoothed': ((0, v, 1), 'g')
+            'nonlinear_smoothed': ((0, v, 1), 'g'),
+            'linear_median': ((), 'orange'),
+            'nonlinear_median': ((), 'purple')
         }
 
         # Plot each spectrum type as two-pane mag/phase plots.
@@ -375,25 +379,30 @@ def plot_errors(srcfile):
     ]))
 
     # Make the plot.
-    # TODO: This plot is pretty ugly and has misleading/confusing labels.
+    # TODO: @ This plot is pretty ugly and has misleading/confusing labels.
 
     colors = dict(
         linear='y',
         linear_smoothed='orange',
+        linear_median='red',
         nonlinear='g',
         nonlinear_smoothed='b',
+        nonlinear_median='purple'
     )
 
     pp.figure(figsize=(20, 20))
 
     for specname in mses['phase']:
+        spectext = specname.replace('_', ' ')
+
         for i, j in itertools.combinations_with_replacement(range(nvars), 2):
             # MSE complex distance
             pp.subplot(nvars * 3, nvars, j * (nvars * 3) + (0 * nvars) + i + 1)
             pp.plot(
                 nfftlog2s,
                 mses['complex'][specname][:, i, j],
-                color=colors[specname]
+                color=colors[specname],
+                label=spectext
             )
 
             pp.xlabel('$\\log MSE(\\hat{f}_{xy}, f_{xy})$')
@@ -405,7 +414,8 @@ def plot_errors(srcfile):
             pp.plot(
                 nfftlog2s,
                 mses['mag'][specname][:, i, j],
-                color=colors[specname]
+                color=colors[specname],
+                label=spectext
             )
 
             pp.xlabel('$\\log MSE(|\\hat{f}_{xy}|, |f_{xy}|)$')
@@ -417,13 +427,17 @@ def plot_errors(srcfile):
             pp.plot(
                 nfftlog2s,
                 mses['phase'][specname][:, i, j],
-                color=colors[specname]
+                color=colors[specname],
+                label=spectext
             )
 
             pp.xlabel('$ME(\\angle \\hat{f}_{xy}, \\angle f_{xy})$')
             pp.xlim(np.amin(nfftlog2s), np.amax(nfftlog2s))
             pp.yscale('linear')
 
+    lastax = pp.gca()
+    pp.subplot(nvars * 3, nvars, nvars)
+    pp.legend(*lastax.get_legend_handles_labels())
     pp.subplots_adjust(wspace=0.5, hspace=1.0)
 
     pp.savefig(figfile)
@@ -552,10 +566,19 @@ def run_config(srcfile):
             freqs, spectra['linear'] = models.spectrum(linear, **csdargs)
             _, spectra['nonlinear'] = models.spectrum(nonlinear, **csdargs)
 
+            # Smooth spectral matrices for better estimate.
+            # TODO: @ I'm explicitly doing the median filter here. Probably
+            # TODO:     better to just define multiple smoothing windows in the
+            # TODO:     config dictionary . . .
+
             spectra['linear_smoothed'] = np.empty_like(spectra['linear'])
             spectra['nonlinear_smoothed'] = np.empty_like(spectra['nonlinear'])
+            spectra['linear_median'] = np.empty_like(spectra['linear'])
+            spectra['nonlinear_median'] = np.empty_like(spectra['nonlinear'])
 
-            # Smooth spectral matrices for better estimate.
+            medianargs = dict(smoothingargs.iteritems())
+            medianargs['window'] = 'median'
+
             for i, j in itertools.combinations_with_replacement(
                     range(nvars), 2
             ):
@@ -567,6 +590,16 @@ def run_config(srcfile):
                 spectra['nonlinear_smoothed'][i, j] = models.smooth(
                     spectra['nonlinear'][i, j],
                     **smoothingargs
+                )
+
+                spectra['linear_median'][i, j] = models.smooth(
+                    spectra['linear'][i, j],
+                    **medianargs
+                )
+
+                spectra['nonlinear_median'][i, j] = models.smooth(
+                    spectra['nonlinear'][i, j],
+                    **medianargs
                 )
 
             # Evaluate analytic spectral matrix.
