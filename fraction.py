@@ -20,6 +20,15 @@ Note that at times this percentage goes above 100%, as some models introduce
 more synchrony between these variables than does the full model.
 """
 
+# TODO: @ Normalized cospectrum, normalized by geometric mean of variance of
+# TODO:     the two populations. Correlation integrated across freqs is R^2,
+# TODO:     the correlation coefficient.
+# TODO: @ 1. normalized covariance, 2. fraction of normalized covariance
+# TODO:     normalized cospectrum in Dan's doc.--pointwise normalized is other.
+# TODO: @ Verify numerical result for matrix inverse. Get inverse, multiply by
+# TODO:     original, see if I get same result to N decimal places. If I don't,
+# TODO:     throw an error.
+
 import itertools
 
 import numpy as np
@@ -35,7 +44,7 @@ import matplotlib.pyplot as pp
 import models
 
 # 1. Model parameters.
-# TODO: Maybe use pybatchdict for these.
+# TODO: @ Maybe use pybatchdict for these.
 model = models.Parasitism.get_model("nbd(2)")
 params = np.array([
     [
@@ -82,6 +91,8 @@ for migh, migp, morh, morp in itertools.product(range(2), repeat=4):
         for v in freqs
     ]).T
 
+    # TODO: @ Magnitudes are not scaled properly. Also, to what do the non-
+    # TODO:     dominant eigenvalues correspond?
     eigvals, eigvecs = model.calculate_eigenvalues(sym_params)
     oscfreqs[morh, morp, migh, migp] = np.angle(eigvals) / (2 * np.pi)
     oscmags[morh, morp, migh, migp] = abs(eigvals)
