@@ -64,15 +64,21 @@ def smooth(x, window='boxcar', p=0.5, q=0.5):
 
     m = int(max(np.ceil((q * len(x))**p), 1))   # Window scale
     L = m * 2 + 1                               # Actual window size (odd)
-    win = scipy.signal.get_window(window, L)    # Window.
 
-    # For edges, mirror the required amount of data around the edges such that
-    # the smoothing window can begin with its center aligned with the first
-    # data point and end with its center aligned with the last datapoint.
-    s = np.r_[x[m:0:-1], x, x[-2:-m-2:-1]]
+    if window != 'median':
+        win = scipy.signal.get_window(window, L)    # Window.
 
-    return scipy.signal.convolve(s, win / sum(win), mode='valid')
+        # For edges, mirror the required amount of data around the edges such that
+        # the smoothing window can begin with its center aligned with the first
+        # data point and end with its center aligned with the last datapoint.
+        s = np.r_[x[m:0:-1], x, x[-2:-m-2:-1]]
 
+        return scipy.signal.convolve(s, win / sum(win), mode='valid')
+    else:
+        return np.vectorize(complex)(
+            scipy.signal.medfilt(np.real(x), (L,)),
+            scipy.signal.medfilt(np.imag(x), (L,))
+        )
 
 def spectrum(series, **csdargs):
     """
@@ -103,7 +109,7 @@ def spectrum(series, **csdargs):
     for i, j in itertools.combinations_with_replacement(range(nstates), 2):
         spec, _ = mlab.csd(series[i], series[j], **csdargs)
 
-        # TODO: mlab.csd scales all values by a factor of two. Not sure why.
+        # TODO: @ mlab.csd scales all values by a factor of two. Not sure why.
         sxy[i, j] = sxy[i, j] = spec[:, 0] / 2
 
     return freqs, sxy
@@ -367,12 +373,12 @@ class StochasticModel:
     and the dynamics are expressed as a SymPy Matrix object.
     """
 
-    # TODO: Try using stattools to create a vector AR process instead of
-    # manually computing properties of the linear model. I'm not sure how
-    # complete stattools's ARMA implementation is for the multivariate case,
-    # though.
+    # TODO: @ Try using stattools to create a vector AR process instead of
+    # TODO:     manually computing properties of the linear model. I'm not sure
+    # TODO:     how complete stattools's ARMA implementation is for the
+    # TODO:     multivariate case, though.
 
-    # TODO: look at greenman and benton for magnitude of peak
+    # TODO: @ look at greenman and benton for magnitude of peak
 
     def __init__(self, symvars, noises, equation):
         """
@@ -404,7 +410,7 @@ class StochasticModel:
     def solve_equilibrium(self):
         """Find the [first] non-trivial equilibrium point."""
 
-        # TODO: This currently assumes there's one non-trivial equilibrium
+        # TODO: @ This currently assumes there's one non-trivial equilibrium
         # TODO:     point and that it's the second returned by SymPy's solve().
         # TODO:     That's a dangerous assumption.
 
@@ -633,13 +639,13 @@ class Parasitism:
     representing host-parasitoid interactions.
     """
 
-    # TODO: organize h-p-h-p so that my jacobian is a block-symmetric matrix
+    # TODO: @ organize h-p-h-p so that my jacobian is a block-symmetric matrix
     # TODO:     where each block is a patch
 
-    # TODO: look up eigenvalues of block matrices (det(A)det(B) - det(C)det(D))
+    # TODO: @ look up eigenvalues of block matrices (det(A)det(B) - det(C)det(D))
     # TODO:     [AB;CD]
 
-    # TODO: extend main theorem to come up with lemmas for spectral peaks /
+    # TODO: @ extend main theorem to come up with lemmas for spectral peaks /
     # TODO:     magnitudes, possibly for special cases. Simplify these in terms
     # TODO:     of general parameters for any model that includes symmetric
     # TODO:     migration and specifically for each model, to factor out any
@@ -768,11 +774,11 @@ class Parasitism:
             # in the off diagonals such that hosts only migrate to other hosts
             # and parasitoids only migrate to other parasitoids.
             #
-            # TODO: This will NOT work, e.g. with AR1 or any non host-parasitoid
-            # TODO:     model or multispecies model. Only for models where there
-            # TODO:     are one host and one parasitoid per patch, and hosts
-            # TODO:     precede parasitoids in the list of state variables.
-
+            # TODO: @ This will NOT work, e.g. with AR1 or any non host-
+            # TODO:     parasitoid model or multispecies model. Only for models
+            # TODO:     where there are one host and one parasitoid per patch,
+            # TODO:     and hosts precede parasitoids in the list of state
+            # TODO:     variables.
             migrationmat = sym.zeros(npatches * 2)
 
             if migration == 'global':
