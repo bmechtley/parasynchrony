@@ -20,11 +20,6 @@ Note that at times this percentage goes above 100%, as some models introduce
 more synchrony between these variables than does the full model.
 """
 
-# TODO: @ Normalized cospectrum, normalized by geometric mean of variance of
-# TODO:     the two populations. Correlation integrated across freqs is R^2,
-# TODO:     the correlation coefficient.
-# TODO: @ 1. normalized covariance, 2. fraction of normalized covariance
-# TODO:     normalized cospectrum in Dan's doc.--pointwise normalized is other.
 # TODO: @ Verify numerical result for matrix inverse. Get inverse, multiply by
 # TODO:     original, see if I get same result to N decimal places. If I don't,
 # TODO:     throw an error.
@@ -148,10 +143,19 @@ for i, ctuple in enumerate(itertools.product(range(2), repeat=4)):
 
         # Plot vertical line at the dominant frequency in both subplots.
         for mag, freq in itertools.izip(oscmags[ctuple], oscfreqs[ctuple]):
-            ax[i, sp].axhline(mag, color='green')
-
             ax[i, sp].axvline(freq, color='green')
             ax[i, sp+1].axvline(freq, color='green')
+
+        # Plot shaded region for 95% of synchrony.
+        perc = np.percentile(magspec[cell], 95)
+
+        ax[i, sp].fill_between(
+            freqs,
+            np.ones(magspec[cell].shape) * np.finfo(magspec[cell].dtype).eps,
+            magspec[cell],
+            where=magspec[cell] > perc,
+            color=(1, 0, 0, .25)
+        )
 
 # Titles.
 ax[0, 0].set_title('H-H magnitude')
