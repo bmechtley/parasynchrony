@@ -45,12 +45,29 @@ def symlog(x):
     return np.log(abs(x) + np.finfo(dtype).eps) * np.sign(x)
 
 
+def smooth_phasors(x, magargs=None, phasorargs=None):
+    """
+    Smooth complex valued input by using separate smoothing kernels for
+    magnitudes and phases. Smoothing on phases is done as smoothing on unit-
+    length phasors.
+
+    :param x (np.array): input array
+    :param magargs (dict): arguments for smooth() on input magnitudes.
+    :param phasorargs (dict): arguments for smooth() on input unit phasors.
+    :return (np.array): smoothed data
+    """
+
+    return np.vectorize(complex)(
+        smooth(abs(x), **magargs),
+        np.angle(smooth(x / abs(x), **phasorargs))
+    )
+
 def smooth(x, window='boxcar', p=0.5, q=0.5):
     """
-    Smooth timeseries input with a window that grows with the number of
-    timesteps such that, as the number of timesteps approaches infinity, the
-    number of values within the smoothing window approaches infinity, but the
-    percentage of values in the window approaches zero.
+    Smooth input with a window that grows with the length of the array such
+    that, as the number of dimensions approaches infinity, the number of values
+    within the smoothing window approaches infinity, but the percentage of
+    values in the window approaches zero.
 
     Window size is determined by: q * len(x)**p
     Note that p and q should be less than 1 for the above criteria to hold.
@@ -58,7 +75,7 @@ def smooth(x, window='boxcar', p=0.5, q=0.5):
     :param x (np.array): timeseries data to smooth.
     :param window (str): window to grab from scipy.signal.get_window()
     :param p (float): linear scaling of window with length of x.
-    :param q (float): exponential scaling of window with length of x.
+    :param q (float): polynomial scaling of window with length of x.
     :return (np.array): smoothed data
     """
 
@@ -75,10 +92,7 @@ def smooth(x, window='boxcar', p=0.5, q=0.5):
 
         return scipy.signal.convolve(s, win / sum(win), mode='valid')
     else:
-        return np.vectorize(complex)(
-            scipy.signal.medfilt(np.real(x), (L,)),
-            scipy.signal.medfilt(np.imag(x), (L,))
-        )
+        return scipy.signal.medfilt(x, (L,))
 
 def spectrum(series, **csdargs):
     """

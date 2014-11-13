@@ -52,8 +52,6 @@ Commands:
         order of the configuration.
 """
 
-# TODO: Median for power, mean for unit phasors.
-
 import itertools
 import cPickle
 import sys
@@ -576,30 +574,30 @@ def run_config(srcfile):
             spectra['linear_median'] = np.empty_like(spectra['linear'])
             spectra['nonlinear_median'] = np.empty_like(spectra['nonlinear'])
 
-            medianargs = dict(smoothingargs.iteritems())
-            medianargs['window'] = 'median'
+            magargs = dict(smoothingargs.iteritems())
+            magargs['window'] = 'median'
 
             for i, j in itertools.combinations_with_replacement(
                     range(nvars), 2
             ):
                 spectra['linear_smoothed'][i, j] = models.smooth(
-                    spectra['linear'][i, j],
-                    **smoothingargs
+                    spectra['linear'][i, j], **smoothingargs
                 )
 
                 spectra['nonlinear_smoothed'][i, j] = models.smooth(
-                    spectra['nonlinear'][i, j],
-                    **smoothingargs
+                    spectra['nonlinear'][i, j], **smoothingargs
                 )
 
-                spectra['linear_median'][i, j] = models.smooth(
+                spectra['linear_median'][i, j] = models.smooth_phasors(
                     spectra['linear'][i, j],
-                    **medianargs
+                    magargs=magargs,
+                    phasorargs=smoothingargs
                 )
 
-                spectra['nonlinear_median'][i, j] = models.smooth(
+                spectra['nonlinear_median'][i, j] = models.smooth_phasors(
                     spectra['nonlinear'][i, j],
-                    **medianargs
+                    magargs=magargs,
+                    phasorargs=smoothingargs
                 )
 
             # Evaluate analytic spectral matrix.
