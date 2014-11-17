@@ -82,7 +82,9 @@ def plot_fraction(
     full_spectrum = spectra[0][cell]
     rawfull_mag = abs(full_spectrum)
     rawfull_re = np.real(full_spectrum)
-    normfull_re = rawfull_re / (covariance[0, r, r] * covariance[0, c, c])
+    normfull_re = rawfull_re / np.sqrt(
+        covariance[0, r, r] * covariance[0, c, c]
+    )
 
     for i, (spec, mcov, plotargs) in enumerate(itertools.izip(
         spectra, covariance, plotarglist
@@ -91,7 +93,7 @@ def plot_fraction(
 
         rawspec_mag = abs(spec[cell])
         rawspec_re = np.real(spec[cell])
-        normspec_re = rawspec_re / (mcov[r, r] * mcov[c, c])
+        normspec_re = rawspec_re / np.sqrt(mcov[r, r] * mcov[c, c])
 
         # Subplot 1: Plot cospectrum.
         plot_shade_percentile(freqs, rawspec_mag, ax=ax[0], **plotargs)
@@ -108,8 +110,7 @@ def plot_fraction(
             )
             ax[1].axhline(
                 np.mean(rawspec_mag) / np.mean(rawfull_mag) * 100,
-                ls='--',
-                **plotargs
+                ls='--', **plotargs
             )
 
             # Subplot 4: Plot fraction of normalized cospectrum.
@@ -119,23 +120,21 @@ def plot_fraction(
             )
             ax[3].axhline(
                 np.mean(normspec_re) / np.mean(normfull_re) * 100,
-                ls='--',
-                **plotargs
+                ls='--', **plotargs
             )
 
     # x axis limit for all plots.
     for axi in range(4):
-        ax[axi].set_xlabel('$\omega$')
+        ax[axi].set_xlabel('$\\omega$')
         ax[axi].set_xlim(freqs[0], freqs[-1])
 
     # Labels.
-    varnames = [str(model.vars[c]) for c in cell]
+    varnames = tuple([str(model.vars[c]) for c in cell])
 
-    ylabel = '$|f_{%s%s}|$' % (varnames[0], varnames[1])
-    ax[0].set_ylabel(ylabel)
-
-    ax[1].set_ylabel('$\\%% |f_{%s%s}|$' % (varnames[0], varnames[1]))
-    ax[1].set_ylim(0, 110)
+    ax[0].set_ylabel('$|f_{%s%s}|$' % varnames)
+    ax[1].set_ylabel('$\\%% |f_{%s%s}|$' % varnames)
+    ax[2].set_ylabel('$\\eta_{%s%s}$' % varnames)
+    ax[3].set_ylabel('$\\%% \\eta_{%s%s}$' % varnames)
 
 
 def main():
