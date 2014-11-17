@@ -32,10 +32,26 @@ import matplotlib.pyplot as pp
 import models
 
 
+def plot_shade_percentile(x, y, ax=None, **kwargs):
+    if ax == None: ax = pp.gca()
+
+    perc = np.percentile(y, 95)
+
+    ax.plot(x, y, **kwargs)
+    ax.fill_between(
+        x,
+        np.ones(y.shape) * np.finfo(y.dtype).eps,
+        y,
+        where=y > perc,
+        alpha=.25,
+        **kwargs
+    )
+
 def plot_fraction(
-        model, params, covariance,
+        model, params, noisecov,
         cell=None, nfreqs=1000, plotarglist=None, ax=None
 ):
+    # Parameters as SymPy symbols.
     sym_params = [
         {
             models.Parasitism.params[name]: value
@@ -43,57 +59,69 @@ def plot_fraction(
         } for p in params
     ]
 
+    # The model's spectral matrix.
     freqs = np.linspace(0, 0.5, nfreqs)
 
     spectra = np.array([
         np.array([
-            model.calculate_spectrum(sym_params[i], covariance[i], v)
+            model.calculate_spectrum(sym_params[i], noisecov[i], v)
             for v in freqs
         ]).T
         for i in range(len(params))
     ])
 
-    magnitude_spectra = abs(spectra)
+    # The model's covariance (autocovariance at lag zero).
+    covariance = np.array([
+        model.calculate_covariance(sym_params[i], noisecov[i])
+        for i in range(len(params))
+    ])
 
-    #
-    # eigvals, eigvecs = model.calculate_eigenvalues(sym_params)
-    # oscfreqs = np.angle(eigvals) / (2 * np.pi)
-    # oscmags = abs(eigvals)
-    #
-    # Plot vertical line at the dominant frequency in both subplots.
-    # for mag, freq in itertools.izip(oscmags[ctuple], oscfreqs[ctuple]):
-    #     ax[i, sp].axvline(freq, color='green')
-    #     ax[i, sp+1].axvline(freq, color='green')
-    #
+    r, c = cell
 
-    # 1. Plot cospectrum.
-    for magspec, plotargs in itertools.izip(magnitude_spectra, plotarglist):
-        ax[0].plot(freqs, magspec[cell], **plotargs)
-        perc = np.percentile(magspec[cell], 95)
-        ax[0].fill_between(
-            freqs,
-            np.ones(magspec[cell].shape) * np.finfo(magspec[cell].dtype).eps,
-            magspec[cell],
-            where=magspec[cell] > perc,
-            alpha=.25,
-            **plotargs
-        )
+    # The spectrum for the full model (first in the list of params, noisecov)
+    full_spectrum = spectra[0][cell]
+    rawfull_mag = abs(full_spectrum)
+    rawfull_re = np.real(full_spectrum)
+    normfull_re = rawfull_re / (covariance[0, r, r] * covariance[0, c, c])
 
-    # 2. Plot fraction of synchrony from cospectrum.
-    for magspec, plotargs in itertools.izip(magnitude_spectra, plotarglist):
-        ax[1].plot(
-            freqs, magspec[cell] / magnitude_spectra[0][cell] * 100, **plotargs
-        )
+    for i, (spec, mcov, plotargs) in enumerate(itertools.izip(
+        spectra, covariance, plotarglist
+    )):
+        r, c = cell
 
-        ax[1].axhline(
-            np.amax(magspec[cell]) / np.amax(magnitude_spectra[0][cell]) * 100,
-            **plotargs
-        )
+        rawspec_mag = abs(spec[cell])
+        rawspec_re = np.real(spec[cell])
+        normspec_re = rawspec_re / (mcov[r, r] * mcov[c, c])
 
-        ax[1].axhline(
-            np.mean(magspec[cell]) / np.mean(magnitude_spectra[0][cell]) * 100,
-            ls='--', **plotargs
-        )
+        # Subplot 1: Plot cospectrum.
+        plot_shade_percentile(freqs, rawspec_mag, ax=ax[0], **plotargs)
+
+        # Subplot 3: Plot normalized cospectrum.
+        plot_shade_percentile(freqs, normspec_re, ax=ax[2], **plotargs)
+
+        # Draw two lines: one for fraction of maximum, one for fraction of mean.
+        if i != 0:
+            # Subplot 2. Plot fraction of synchrony from cospectrum.
+            ax[1].plot(freqs, rawspec_mag / rawfull_mag * 100, **plotargs)
+            ax[1].axhline(
+                np.amax(rawspec_mag) / np.amax(rawfull_mag) * 100, **plotargs
+            )
+            ax[1].axhline(
+                np.mean(rawspec_mag) / np.mean(rawfull_mag) * 100,
+                ls='--',
+                **plotargs
+            )
+
+            # Subplot 4: Plot fraction of normalized cospectrum.
+            ax[3].plot(freqs, normspec_re / normfull_re * 100, **plotargs)
+            ax[3].axhline(
+                np.amax(normspec_re) / np.amax(normfull_re) * 100, **plotargs
+            )
+            ax[3].axhline(
+                np.mean(normspec_re) / np.mean(normfull_re) * 100,
+                ls='--',
+                **plotargs
+            )
 
     # x axis limit for all plots.
     for axi in range(4):
@@ -103,7 +131,6 @@ def plot_fraction(
     # Labels.
     varnames = [str(model.vars[c]) for c in cell]
 
-    ax[0].set_yscale('log')
     ylabel = '$|f_{%s%s}|$' % (varnames[0], varnames[1])
     ax[0].set_ylabel(ylabel)
 
@@ -155,10 +182,7 @@ def main():
             [basecov, cov],
             cell=cell,
             nfreqs=nfreqs,
-            plotarglist=[
-                dict(color='k'),
-                dict(color='r')
-            ],
+            plotarglist=[{'color': 'k'}, {'color': 'r'}],
             ax=ax[ri]
         )
 

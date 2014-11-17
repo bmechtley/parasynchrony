@@ -294,16 +294,16 @@ def plot_cospectra(
     for i, j in itertools.combinations_with_replacement(range(n), 2):
         # Magnitude.
         pp.sca(axpanes[i][j]['top'])
-        plotfun(freqs, np.abs(pxx[i,j]), **plotargs)
+        plotfun(freqs, abs(pxx[i, j]), **plotargs)
 
-        if np.sum(np.abs(pxx[i,j])) > 0:
+        if np.sum(abs(pxx[i, j])) > 0:
             pp.yscale('log')
 
         pp.xlim(0, freqs[-1])
 
         # Phase.
         pp.sca(axpanes[i][j]['bottom'])
-        plotfun(freqs, np.angle(pxx[i,j]), **plotargs)
+        plotfun(freqs, np.angle(pxx[i, j]), **plotargs)
         pp.xlim(0, freqs[-1])
 
     return axpanes
@@ -483,6 +483,26 @@ class StochasticModel:
 
         return cached
 
+    def calculate_covariance(self, params, covariance):
+        """
+        Calculate the covariance (autocovariance with lag zero) for the model.
+
+        :param params (dict): parameter values with SymPy symbol keys.
+        :param covariance (np.array): covariance of the noise.
+        :return: (np.array): covariance matrix.
+        """
+
+        # TODO: Covariance: verify this result.
+
+        cached = self.get_cached_matrices(params)
+
+        q0 = cached['q0']
+        m1 = cached['m1']
+
+        return q0 * covariance * q0.T * np.linalg.inv(
+            np.identity(len(m1)) - m1 * m1.T
+        )
+
     def calculate_eigenvalues(self, params):
         """
         Calculate the dominant frequency of oscillation for the linearized
@@ -516,8 +536,8 @@ class StochasticModel:
         mu = np.exp(-2j * np.pi * v)
 
         if cached['m1'].shape[0] < 2:
-            r1 = np.array([(1 - mu * cached['m1'][0,0])**-1])
-            r1.reshape((1,1))
+            r1 = np.array([(1 - mu * cached['m1'][0, 0])**-1])
+            r1.reshape((1, 1))
         else:
             r1 = sp.linalg.inv(
                 np.identity(len(cached['m1'])) - mu * cached['m1']
@@ -525,7 +545,7 @@ class StochasticModel:
 
         r = np.dot(r1, cached['q0'])
 
-        return np.dot(np.dot(r,  covariance), np.conj(r.transpose()))
+        return np.dot(np.dot(r,  covariance), np.conj(r.T))
 
     def simulate(self, initial, params, covariance, timesteps=1000):
         """
@@ -656,7 +676,7 @@ class Parasitism:
     # TODO: @ organize h-p-h-p so that my jacobian is a block-symmetric matrix
     # TODO:     where each block is a patch
 
-    # TODO: @ look up eigenvalues of block matrices (det(A)det(B) - det(C)det(D))
+    # TODO: @ look up eigenvalues of block matrices (det(A)det(B)-det(C)det(D))
     # TODO:     [AB;CD]
 
     # TODO: @ extend main theorem to come up with lemmas for spectral peaks /
