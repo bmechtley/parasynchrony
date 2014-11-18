@@ -497,9 +497,13 @@ class StochasticModel:
         cached = self.get_cached_matrices(params)
         q0, m1 = cached['q0'], cached['m1']
 
-        return q0 * covariance * q0.T * np.linalg.inv(
-            2 * np.identity(len(m1)) - 0.5 * m1.T * m1
-        )
+        R = np.linalg.inv(np.identity(len(m1)) - m1)
+        return np.dot(np.dot(np.dot(R, q0), covariance), np.conj(R.T))
+
+        #return np.dot(
+        #    np.linalg.inv(np.identity(len(m1)) - np.dot(-m1, -m1.T)),
+        #    np.dot(np.dot(q0, covariance), q0.T)
+        #)
 
     def calculate_eigenvalues(self, params):
         """
