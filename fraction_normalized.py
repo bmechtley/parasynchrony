@@ -9,17 +9,12 @@ host-to-host cospectra. It also shows a normalized cospectrum (normalized by
 covariance) and a synchrony fraction based off that normalized cospectrum.
 """
 
-# TODO: @ Normalized cospectrum, normalized by geometric mean of variance of
-# TODO:     the two populations. Correlation integrated across freqs is R^2,
-# TODO:     the correlation coefficient.
-# TODO: @ 1. normalized covariance, 2. fraction of normalized covariance
-# TODO:     normalized cospectrum in Dan's doc.--pointwise normalized is other.
-
 # TODO: @ As approach Hopf bifurcation? PREPARE
 
 import itertools
 
 import numpy as np
+import scipy.integrate
 
 import matplotlib
 matplotlib.rc('text', usetex=True)
@@ -32,10 +27,21 @@ import matplotlib.pyplot as pp
 import models
 
 
-def plot_shade_percentile(x, y, ax=None, **kwargs):
-    if ax == None: ax = pp.gca()
+def plot_shade_percentile(x, y, ax=None, perc=95, **kwargs):
+    """
+    Make a plot with values within the P-th percentile shaded in.
 
-    perc = np.percentile(y, 95)
+    :param x (np.array): x axis values
+    :param y (np.array): y axis values
+    :param ax (matplotlib.axes): axes on which to plot.
+    :param perc (float): percentile to use (0-100).
+    :param kwargs (dict): keyword arguments for ax.fill_between.
+    """
+
+    if ax is None:
+        ax = pp.gca()
+
+    perc = np.percentile(y, perc)
 
     ax.plot(x, y, **kwargs)
     ax.fill_between(
@@ -47,10 +53,37 @@ def plot_shade_percentile(x, y, ax=None, **kwargs):
         **kwargs
     )
 
+
 def plot_fraction(
         model, params, noisecov,
         cell=None, nfreqs=1000, plotarglist=None, ax=None
 ):
+    """
+    Make four plots for a set of model parameters. The first model is assumed
+    to be the "baseline" model.
+
+    1. Raw power spectrum for each model.
+    2. Fraction of power spectra over the baseline model.
+    3. Normalized spectrum for each model.
+    4. Fraction of normalized spectrum over the baseline model.
+
+    Plots will be placed within the axes specified by ax.
+
+    :param model (models.StochasticModel): stochastic model specification.
+    :param params (list): list of dictionaries containing parameter/value pairs.
+    :param noisecov (list): list of numpy arrays for the noise covariance for
+        each different set of parameters. Should be the same length as params.
+    :param cell (tuple): combination of state variables for which to plot the
+        cospectrum.
+    :param nfreqs (int): number of points to sample the cospectrum at from 0
+        to 0.5.
+    :param plotarglist (list): list of dictionaries containing extra keywords
+        to pass to plotting methods for each different set of parameters. Should
+        be the same length as params.
+    :param ax (list): list of four matplotlib.Axes instances in which to put the
+        spectrum plots.
+    """
+
     # Parameters as SymPy symbols.
     sym_params = [
         {
@@ -70,60 +103,71 @@ def plot_fraction(
         for i in range(len(params))
     ])
 
+    # Compute the normalization factors for the normalized cospectra by
+    # integrating out the PSD numerically. Normalized cospectra should
+    # integrate to the correlation coefficient, R^2.
+
+    # TODO: @ This is a hack, integrating out the power density numerically
+    # TODO:     instead of using an analytic solution.
+
     # The model's covariance (autocovariance at lag zero).
-    covariance = np.array([
-        model.calculate_covariance(sym_params[i], noisecov[i])
+    # covariance = np.array([
+    #     model.calculate_covariance(sym_params[i], noisecov[i])
+    #     for i in range(len(params))
+    # ])
+
+    norms = [
+        np.sqrt(np.prod([
+            scipy.integrate.quad(
+                lambda x: abs(
+                    model.calculate_spectrum(
+                        sym_params[i], noisecov[i], x
+                    )
+                )[a, a]**2, 0, 0.5
+            )[0] * 2
+            for a in cell
+        ]))
         for i in range(len(params))
-    ])
+    ]
 
-    r, c = cell
+    # Different spectra for each set of model parameters. "raw" is the raw
+    # spectral matrix, "pow" is the power spectrum, and "norm" is the
+    # normalized cospectrum, Re(spectrum_ij) / sqrt(var(x_i)^2 * var(x_j)^2)
 
-    # The spectrum for the full model (first in the list of params, noisecov)
-    full_spectrum = spectra[0][cell]
-    rawfull_mag = abs(full_spectrum)
-    rawfull_re = np.real(full_spectrum)
-    normfull_re = rawfull_re / np.sqrt(
-        covariance[0, r, r] * covariance[0, c, c]
-    )
+    spectra = [
+        {
+            'raw': spec[cell],
+            'pow': abs(spec[cell])**2,
+            'norm': np.real(spec[cell]) / norm
+        }
+        for i, (spec, norm) in enumerate(itertools.izip(spectra, norms))
+    ]
 
-    for i, (spec, mcov, plotargs) in enumerate(itertools.izip(
-        spectra, covariance, plotarglist
-    )):
-        r, c = cell
-
-        rawspec_mag = abs(spec[cell])
-        rawspec_re = np.real(spec[cell])
-        normspec_re = rawspec_re / np.sqrt(mcov[r, r] * mcov[c, c])
-
+    # Make the plots for each set of model parameters.
+    for i, (spec, plotargs) in enumerate(itertools.izip(spectra, plotarglist)):
         # Subplot 1: Plot cospectrum.
-        plot_shade_percentile(freqs, rawspec_mag, ax=ax[0], **plotargs)
+        plot_shade_percentile(freqs, spec['pow'], ax=ax[0], **plotargs)
 
         # Subplot 3: Plot normalized cospectrum.
-        plot_shade_percentile(freqs, normspec_re, ax=ax[2], **plotargs)
+        plot_shade_percentile(freqs, spec['norm'], ax=ax[2], **plotargs)
 
         # Draw two lines: one for fraction of maximum, one for fraction of mean.
         if i != 0:
+            identity = lambda x: x
+            sync_fraction = lambda key, fun=identity: \
+                fun(spec[key]) / fun(spectra[0][key]) * 100
+
             # Subplot 2. Plot fraction of synchrony from cospectrum.
-            ax[1].plot(freqs, rawspec_mag / rawfull_mag * 100, **plotargs)
-            ax[1].axhline(
-                np.amax(rawspec_mag) / np.amax(rawfull_mag) * 100, **plotargs
-            )
-            ax[1].axhline(
-                np.mean(rawspec_mag) / np.mean(rawfull_mag) * 100,
-                ls='--', **plotargs
-            )
+            ax[1].plot(freqs, sync_fraction('pow'), **plotargs)
+            ax[1].axhline(sync_fraction('pow', np.amax),  **plotargs)
+            ax[1].axhline(sync_fraction('pow', np.mean), ls='--', **plotargs)
 
             # Subplot 4: Plot fraction of normalized cospectrum.
-            ax[3].plot(freqs, normspec_re / normfull_re * 100, **plotargs)
-            ax[3].axhline(
-                np.amax(normspec_re) / np.amax(normfull_re) * 100, **plotargs
-            )
-            ax[3].axhline(
-                np.mean(normspec_re) / np.mean(normfull_re) * 100,
-                ls='--', **plotargs
-            )
+            ax[3].plot(freqs, sync_fraction('norm'), **plotargs)
+            ax[3].axhline(sync_fraction('norm', np.amax), **plotargs)
+            ax[3].axhline(sync_fraction( 'norm', np.mean), ls='--', **plotargs)
 
-    # x axis limit for all plots.
+    # X-axis limit for all plots.
     for axi in range(4):
         ax[axi].set_xlabel('$\\omega$')
         ax[axi].set_xlim(freqs[0], freqs[-1])
@@ -138,6 +182,7 @@ def plot_fraction(
 
 
 def main():
+    # Initialize model / parameters.
     model = models.Parasitism.get_model("nbd(2)")
 
     baseparams = dict(
@@ -145,19 +190,26 @@ def main():
         a=0.5,
         c=1.2,
         k=0.9,
-        mh=0.5,
-        mp=0.5
+        mh=0.25,
+        mp=0.25
     )
 
     evar = 0.5
-    basecov = np.identity(4) * evar
 
     morans = [0, 0.25]
     migrations = [0, 0.25]
     cell = (0, 1)
-    nfreqs = 1000
+    nfreqs = 2000
 
+    basecov = np.identity(4) * evar
+    basecov[0, 1] = basecov[1, 0] = basecov[2, 3] = basecov[3, 2] = morans[1]
+
+    # Make figure.
     fig, ax = pp.subplots(16, 4, figsize=(8.5, 22))
+
+    # Plot each combination of model parameters against the "baseline" model,
+    # which uses all sources of synchrony, i.e. moran/dispersal on both host
+    # and parasitoid.
 
     for ri, (migh, migp, morh, morp) in enumerate(itertools.product(
         morans, morans, migrations, migrations
@@ -174,6 +226,13 @@ def main():
         params = dict(baseparams)
         params['mh'] = migh
         params['mp'] = migp
+
+        ax[ri][0].set_title('Moran %s %s Dispersal %s %s' % (
+            'H' if morh else '-',
+            'P' if morp else '-',
+            'H' if migh else '-',
+            'P' if migp else '-'
+        ))
 
         plot_fraction(
             model,
