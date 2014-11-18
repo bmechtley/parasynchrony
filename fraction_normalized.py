@@ -89,7 +89,8 @@ def plot_fraction(
         {
             models.Parasitism.params[name]: value
             for name, value in p.iteritems()
-        } for p in params
+        }
+        for p in params
     ]
 
     # The model's spectral matrix.
@@ -107,8 +108,7 @@ def plot_fraction(
     # integrating out the PSD numerically. Normalized cospectra should
     # integrate to the correlation coefficient, R^2.
 
-    # TODO: @ This is a hack, integrating out the power density numerically
-    # TODO:     instead of using an analytic solution.
+    # TODO: @ This is a hack. Should use analytic solution for variance.
 
     # The model's covariance (autocovariance at lag zero).
     # covariance = np.array([
@@ -123,8 +123,8 @@ def plot_fraction(
                     model.calculate_spectrum(
                         sym_params[i], noisecov[i], x
                     )
-                )[a, a]**2, 0, 0.5
-            )[0] * 2
+                )[a, a]**2, -0.5, 0.5
+            )[0]
             for a in cell
         ]))
         for i in range(len(params))
@@ -156,6 +156,9 @@ def plot_fraction(
             identity = lambda x: x
             sync_fraction = lambda key, fun=identity: \
                 fun(spec[key]) / fun(spectra[0][key]) * 100
+
+            # TODO: @ Should we use fraction of mean/max, or mean/max of
+            # TODO:     fraction?
 
             # Subplot 2. Plot fraction of synchrony from cospectrum.
             ax[1].plot(freqs, sync_fraction('pow'), **plotargs)
