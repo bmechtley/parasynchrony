@@ -22,6 +22,7 @@ import numpy as np
 import scipy as sp
 import itertools
 import scipy.signal
+import scipy.integrate
 
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
@@ -30,6 +31,28 @@ import matplotlib.colors as mplcolors
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as pp
 import matplotlib.gridspec as gridspec
+
+
+def solve_axatc(a, c):
+    """
+    Solves for X = A X A' + C
+    See: http://math.stackexchange.com/questions/348487/solving-matrix-
+        equations-of-the-form-x-axat-c
+
+    :param a (np.array): A matrix.
+    :param c (np.array): C matrix.
+    :return: (np.array) X matrix.
+    """
+
+    a, c = [np.matrix(m) for m in a, c]
+    evals, evecs = [np.matrix(m) for m in np.linalg.eig(a)]
+
+    phi = np.ones(evals.shape) - evals.getH() * evals
+    gamma = np.linalg.inv(evecs) * c * np.linalg.inv(evecs.getH())
+    x_tilde = np.multiply(1. / phi, gamma)
+    x = evecs * x_tilde * evecs.getH()
+
+    return x
 
 
 def symlog(x):
@@ -62,6 +85,7 @@ def smooth_phasors(x, magargs=None, phasorargs=None):
         np.angle(smooth(x / abs(x), **phasorargs))
     )
 
+
 def smooth(x, window='boxcar', p=0.5, q=0.5):
     """
     Smooth input with a window that grows with the length of the array such
@@ -85,14 +109,16 @@ def smooth(x, window='boxcar', p=0.5, q=0.5):
     if window != 'median':
         win = scipy.signal.get_window(window, L)    # Window.
 
-        # For edges, mirror the required amount of data around the edges such that
-        # the smoothing window can begin with its center aligned with the first
-        # data point and end with its center aligned with the last datapoint.
+        # For edges, mirror the required amount of data around the edges such
+        # that the smoothing window can begin with its center aligned with the
+        # first data point and end with its center aligned with the last data
+        # point.
         s = np.r_[x[m:0:-1], x, x[-2:-m-2:-1]]
 
         return scipy.signal.convolve(s, win / sum(win), mode='valid')
     else:
         return scipy.signal.medfilt(x, (L,))
+
 
 def spectrum(series, **csdargs):
     """
@@ -483,6 +509,42 @@ class StochasticModel:
 
         return cached
 
+    def integrate_covariance_from_analytic_spectrum(self, params, covariance):
+        return np.array([
+            [
+                scipy.integrate.quad(
+                    lambda x: abs(
+                        self.calculate_spectrum(params, covariance, x)
+                    )[r, c], -0.5, 0.5
+                )[0]
+                for c in range(len(self.vars))
+            ] for r in range(len(self.vars))
+        ])
+
+    def state_space(self, params):
+        cached = self.get_cached_matrices(params)
+        q0, m1 = [np.matrix(cached[k]) for k in 'q0', 'm1']
+
+        print 'eig(m1)', np.linalg.eig(m1)
+
+        return m1, q0, np.eye(len(m1)), np.zeros(m1.shape)
+
+    def zeros_and_poles(self, params):
+        num, den = scipy.signal.ss2tf(*self.state_space(params))
+
+        # print 'num', num
+        # print 'den', den
+
+        zpks = [scipy.signal.tf2zpk(n, den) for n in num]
+
+        # for i in range(len(zpks)):
+        #    print 'zpks %d' % i
+        #    print '\tz %d' % i, zpks[i][0]
+        #    print '\tp %d' % i, zpks[i][1]
+        #    print '\tk %d' % i, zpks[i][2]
+
+        return zpks
+
     def calculate_covariance(self, params, covariance):
         """
         Calculate the covariance (autocovariance with lag zero) for the model.
@@ -495,15 +557,12 @@ class StochasticModel:
         # TODO: Covariance: verify this result.
 
         cached = self.get_cached_matrices(params)
-        q0, m1 = cached['q0'], cached['m1']
+        q0, m1 = [np.matrix(cached[k]) for k in 'q0', 'm1']
+        covariance = np.matrix(covariance)
 
-        R = np.linalg.inv(np.identity(len(m1)) - m1)
-        return np.dot(np.dot(np.dot(R, q0), covariance), np.conj(R.T))
+        # R(0) = M1 R(0) M1' + Q0 Sigma Q0'
+        return solve_axatc(-m1, q0 * covariance * q0.T)
 
-        #return np.dot(
-        #    np.linalg.inv(np.identity(len(m1)) - np.dot(-m1, -m1.T)),
-        #    np.dot(np.dot(q0, covariance), q0.T)
-        #)
 
     def calculate_eigenvalues(self, params):
         """
@@ -580,7 +639,7 @@ class StochasticModel:
 
         # Use sympy.utilities.lambdify to set up a lambda function to quickly
         # evaluate the model at each timestep. Lamdify just evaluates a string
-        # of Python code, so first translate all variables into Pythno-friendly
+        # of Python code, so first translate all variables into Python-friendly
         # variable names by replacing any special LaTeX characters with
         # underscores.
         trantab = string.maketrans(r'{}\()^*[]', r'_________')
@@ -635,38 +694,28 @@ class StochasticModel:
             variables and T is the number of timesteps.
         """
 
-        # Evaluate the M1 and Q0 matrices with zero noise variance at the
-        # equilibrium.
+        cached = self.get_cached_matrices(params)
 
-        params = dict(params.items())
-        params.update({noise_var: 0 for noise_var in self.noises})
-        params.update({
-            state_var: self.equilibrium[state_var]
-            for state_var in self.vars
-        })
+        # System tuple: A, B, C, D, dt
+        tout, yout, xout = scipy.signal.dlsim(
+            (
+                cached['m1'],
+                cached['q0'],
+                np.eye(len(cached['m1'])),
+                np.zeros(cached['m1'].shape),
+                1
+            ),
+            np.random.multivariate_normal(
+                np.zeros((len(covariance),)),
+                covariance,
+                timesteps
+            ),
+            x0=initial
+        )
 
-        m1f = eval_matrix(self.m1.subs(params))
-        q0f = eval_matrix(self.q0.subs(params))
+        self.simulated_linear = yout.T
 
-        # Simulate the model.
-        self.simulated_linear = np.zeros((timesteps, len(initial)))
-        self.simulated_linear[0] = initial
-
-        rnoise_mean = np.zeros((len(covariance),))
-
-        for step in range(1, timesteps):
-            # Generate random noise with the given covariance.
-            if np.sum(np.abs(covariance)) == 0:
-                rnoise = np.zeros((len(covariance),))
-            else:
-                rnoise = np.random.multivariate_normal(rnoise_mean, covariance)
-
-            linear_term = np.dot(m1f, self.simulated_linear[step - 1])
-            stochastic_term = np.dot(q0f, rnoise)
-
-            self.simulated_linear[step] = linear_term + stochastic_term
-
-        return self.simulated_linear.T
+        return self.simulated_linear
 
 
 class Parasitism:
