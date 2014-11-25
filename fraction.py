@@ -20,10 +20,6 @@ Note that at times this percentage goes above 100%, as some models introduce
 more synchrony between these variables than does the full model.
 """
 
-# TODO: @ Verify numerical result for matrix inverse. Get inverse, multiply by
-# TODO:     original, see if I get same result to N decimal places. If I don't,
-# TODO:     throw an error.
-
 import itertools
 
 import numpy as np
