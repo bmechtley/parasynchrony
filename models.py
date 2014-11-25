@@ -149,7 +149,8 @@ def spectrum(series, **csdargs):
     for i, j in itertools.combinations_with_replacement(range(nstates), 2):
         spec, _ = mlab.csd(series[i], series[j], **csdargs)
 
-        # TODO: @ mlab.csd scales all values by a factor of two. Not sure why.
+        # mlab.csd scales all values by a factor of two for total power in
+        # one-sided FFT.
         sxy[i, j] = sxy[i, j] = spec[:, 0] / 2
 
     return freqs, sxy
@@ -168,12 +169,7 @@ def eval_matrix(m):
     return np.array([float(a) for a in m.evalf()]).reshape(m.shape)
 
 
-def plot_twopane_axes(
-        n=1,
-        ylabels=None,
-        yticks=None,
-        ylimits=None
-):
+def plot_twopane_axes(n=1, ylabels=None, yticks=None, ylimits=None):
     """
     Set up a GridSpec for an NxN lower left triangular grid of subplots, each
     of which has two vertically stacked panes.
@@ -198,8 +194,7 @@ def plot_twopane_axes(
     for i, j in itertools.combinations_with_replacement(range(n), 2):
         # This is the vertically stacked grid inside the current grid cell.
         inner_grid = gridspec.GridSpecFromSubplotSpec(
-            2, 1, subplot_spec=gs[n * j + i],
-            wspace=0, hspace=0
+            2, 1, subplot_spec=gs[n * j + i], wspace=0, hspace=0
         )
 
         for pane_index, pane in enumerate(['top', 'bottom']):
@@ -232,7 +227,7 @@ def plot_cospectra(
         freqs,
         pxx,
         varnames=None,
-        plotfun='auto',
+        plotfun=None,
         axpanes=None,
         **plotargs
 ):
@@ -244,8 +239,8 @@ def plot_cospectra(
     :param varnames (list): List of N names for the states. If None, no labels
         will be drawn (default: None).
     :param plotfun (callable or str): Plot function to use for the spectrum. If
-        'auto', pyplot.scatter will be used for frequency resolution F <= 8192,
-        and pp.hist2d will be used for F > 8192 (default: 'auto').
+        None, pyplot.scatter will be used for frequency resolution F <= 8192,
+        and pp.hist2d will be used for F > 8192 (default: None).
     :param axpanes (list): nested NxN list of dictionaries where each dict has
         keys 'top' and 'bottom' that point to matplotlib.Axes instances
         corresponding to the top (magnitude) and bottom (phase) plots
@@ -258,8 +253,6 @@ def plot_cospectra(
 
     # Set up defaults for plotting type/parameters.
     if plotfun is None:
-        plotfun = pp.plot
-    elif plotfun is 'auto':
         # If auto, automatically determine if a plot should use scatter or
         # hist2d based on how many bins there are to plot.
         if len(freqs) > 8192:
@@ -335,13 +328,7 @@ def plot_cospectra(
     return axpanes
 
 
-def plot_phase(
-        series,
-        varnames=None,
-        logscale=False,
-        plotfun='auto',
-        **plotargs
-):
+def plot_phase(series, varnames=None, logscale=False, plotfun=None, **plotargs):
     """
     Make a NxN lower triangular phase-space plot that plots pairs of state
     variables as functions of each other in a two-dimensional histogram.
@@ -351,14 +338,15 @@ def plot_phase(
         drawn (default: None).
     :param logscale (bool): Whether or not variables should be plot on a log
         scale (default: False).
-    :param plotargs: Any additional parameters to pyplot.hist2d, such as bin
-        count.
+    :param plotfun (callable): Matplotlib plotting function to use for the
+        plots. If None, a plotting method will automatically be chosen from
+        pp.plot, pp.scatter, and pp.hist2d, based upon how many data points
+        there are (default: None).
+    :param plotargs: Any additional parameters to plotfun, such as bin count.
     """
 
     # Set up defaults for plotting type/parameters.
     if plotfun is None:
-        plotfun = pp.scatter
-    elif plotfun is 'auto':
         if len(series.shape) > 1 and series.shape[1] > 8192:
             plotfun = pp.hist2d
         else:
@@ -400,7 +388,8 @@ def plot_phase(
 
         # Scale values.g
         xs, ys = series[i], series[j]
-        if logscale: xs, ys = symlog(xs), symlog(ys)
+        if logscale:
+            xs, ys = symlog(xs), symlog(ys)
 
         plotfun(xs, ys, **plotargs)
 
@@ -437,8 +426,8 @@ class StochasticModel:
         )
 
         self.equilibrium = None
-        self.m1 = None
-        self.q0 = None
+        self.A = None
+        self.B = None
 
         self.simulated = None
         self.simulated_linear = None
@@ -454,15 +443,13 @@ class StochasticModel:
         # TODO:     point and that it's the second returned by SymPy's solve().
         # TODO:     That's a dangerous assumption.
 
-        eq = sym.solve(
+        self.equilibrium = sym.solve(
             sym.Eq(self.vars, self.deterministic),
             self.vars,
             dict=True
-        )
+        )[-1]
 
-        self.equilibrium = eq[-1]
-
-        return eq[-1]
+        return self.equilibrium
 
     def linearize(self):
         """
@@ -477,8 +464,8 @@ class StochasticModel:
         subs = dict(self.equilibrium.items())
         subs.update({noise: 0 for noise in self.noises})
 
-        self.m1 = self.deterministic.jacobian(self.vars).subs(subs)
-        self.q0 = self.stochastic.jacobian(self.noises).subs(subs)
+        self.A = self.deterministic.jacobian(self.vars).subs(subs)
+        self.B = self.stochastic.jacobian(self.noises).subs(subs)
 
     def get_cached_matrices(self, params):
         """
@@ -494,18 +481,18 @@ class StochasticModel:
             values.
         """
 
-        if self.m1 is None or self.q0 is None:
+        if self.A is None or self.B is None:
             self.linearize()
 
         phash = hash(frozenset(params.items()))
         self.cache.setdefault(phash, {})
         cached = self.cache[phash]
 
-        if 'm1' not in cached:
-            cached['m1'] = eval_matrix(self.m1.subs(params))
+        if 'A' not in cached:
+            cached['A'] = eval_matrix(self.A.subs(params))
 
-        if 'q0' not in cached:
-            cached['q0'] = eval_matrix(self.q0.subs(params))
+        if 'B' not in cached:
+            cached['B'] = eval_matrix(self.B.subs(params))
 
         return cached
 
@@ -523,11 +510,11 @@ class StochasticModel:
 
     def state_space(self, params):
         cached = self.get_cached_matrices(params)
-        q0, m1 = [np.matrix(cached[k]) for k in 'q0', 'm1']
+        a, b = [np.matrix(cached[k]) for k in 'A', 'B']
 
-        print 'eig(m1)', np.linalg.eig(m1)
+        print 'eig(A)', np.linalg.eig(a)
 
-        return m1, q0, np.eye(len(m1)), np.zeros(m1.shape)
+        return a, b, np.eye(len(a)), np.zeros(a.shape)
 
     def zeros_and_poles(self, params):
         num, den = scipy.signal.ss2tf(*self.state_space(params))
@@ -557,11 +544,11 @@ class StochasticModel:
         # TODO: Covariance: verify this result.
 
         cached = self.get_cached_matrices(params)
-        q0, m1 = [np.matrix(cached[k]) for k in 'q0', 'm1']
+        a, b = [np.matrix(cached[k]) for k in 'A', 'B']
         covariance = np.matrix(covariance)
 
         # R(0) = M1 R(0) M1' + Q0 Sigma Q0'
-        return solve_axatc(-m1, q0 * covariance * q0.T)
+        return solve_axatc(-a, b * covariance * b.T)
 
 
     def calculate_eigenvalues(self, params):
@@ -575,7 +562,7 @@ class StochasticModel:
         """
 
         cached = self.get_cached_matrices(params)
-        return np.linalg.eig(cached['m1'])
+        return np.linalg.eig(cached['A'])
 
     def calculate_spectrum(self, params, covariance, v=0):
         """
@@ -596,15 +583,15 @@ class StochasticModel:
         # Mu is the spectral component.
         mu = np.exp(-2j * np.pi * v)
 
-        if cached['m1'].shape[0] < 2:
-            r1 = np.array([(1 - mu * cached['m1'][0, 0])**-1])
+        if cached['A'].shape[0] < 2:
+            r1 = np.array([(1 - mu * cached['A'][0, 0])**-1])
             r1.reshape((1, 1))
         else:
             r1 = sp.linalg.inv(
-                np.identity(len(cached['m1'])) - mu * cached['m1']
+                np.identity(len(cached['A'])) - mu * cached['A']
             )
 
-        r = np.dot(r1, cached['q0'])
+        r = np.dot(r1, cached['B'])
 
         return np.dot(np.dot(r,  covariance), np.conj(r.T))
 
@@ -699,10 +686,10 @@ class StochasticModel:
         # System tuple: A, B, C, D, dt
         tout, yout, xout = scipy.signal.dlsim(
             (
-                cached['m1'],
-                cached['q0'],
-                np.eye(len(cached['m1'])),
-                np.zeros(cached['m1'].shape),
+                cached['A'],
+                cached['B'],
+                np.eye(len(cached['A'])),
+                np.zeros(cached['A'].shape),
                 1
             ),
             np.random.multivariate_normal(
@@ -851,6 +838,8 @@ class Parasitism:
 
             params = tokens[1].rstrip(')').split(',')
             npatches = int(params[0])
+            patches = range(npatches)
+
             migration = params[1] if len(params) > 1 else 'global'
 
             # migrationmat will be the transition matrix applied to the
@@ -890,23 +879,15 @@ class Parasitism:
                             p[0]: p[j+1],
                             eh[0]: eh[j+1],
                             ep[0]: ep[j+1]
-                        }) for j in range(npatches)
+                        }) for j in patches
                     ] for i in range(2)
                 ] for item in sublist
             ])
 
             # Create the model.
             multipatch = StochasticModel(
-                [
-                    h[i+1] for i in range(npatches)
-                ] + [
-                    p[i+1] for i in range(npatches)
-                ],
-                [
-                    eh[i+1] for i in range(npatches)
-                ] + [
-                    ep[i+1] for i in range(npatches)
-                ],
+                [h[i+1] for i in patches] + [p[i+1] for i in patches],
+                [eh[i+1] for i in patches] + [ep[i+1] for i in patches],
                 migrationmat * equations
             )
 
@@ -916,13 +897,11 @@ class Parasitism:
 
             if refmodel.equilibrium is not None:
                 multipatch.equilibrium = {
-                    h[i+1]: refmodel.equilibrium[h[0]]
-                    for i in range(npatches)
+                    h[i+1]: refmodel.equilibrium[h[0]] for i in patches
                 }
 
                 multipatch.equilibrium.update({
-                    p[i+1]: refmodel.equilibrium[p[0]]
-                    for i in range(npatches)
+                    p[i+1]: refmodel.equilibrium[p[0]] for i in patches
                 })
 
             # Linearize the model.
