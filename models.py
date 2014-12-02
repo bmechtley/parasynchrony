@@ -402,12 +402,7 @@ class StochasticModel:
     and the dynamics are expressed as a SymPy Matrix object.
     """
 
-    # TODO: @ Try using stattools to create a vector AR process instead of
-    # TODO:     manually computing properties of the linear model. I'm not sure
-    # TODO:     how complete stattools's ARMA implementation is for the
-    # TODO:     multivariate case, though.
-
-    # TODO: @ look at greenman and benton for magnitude of peak
+    # TODO: @ Peak magnitude?
 
     def __init__(self, symvars, noises, equation):
         """
