@@ -18,10 +18,8 @@ covariance) and a synchrony fraction based off that normalized cospectrum.
 # TODO:     do analytic analysis of the 1-patch model to see if there is a Hopf
 # TODO:     bifurcation between the two species.
 
-# TODO: @ Verify covariance results in another script by:
-# TODO:     1. Analytic result.
-# TODO:     2. Numeric integration.
-# TODO:     3. Simulation.
+# TODO: @ Verify covariance vs numeric integration in another script. Already
+# TODO:     verified vs. simulation in covergence.py.
 
 import itertools
 
