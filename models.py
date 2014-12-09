@@ -370,6 +370,7 @@ def plot_phase(series, varnames=None, logscale=False, plotfun=None, **plotargs):
                     mplcolors.colorConverter.to_rgba(plotargs['color'], 1)
                 ]
             )
+
             plotargs.pop('color')
 
     nstates, nsamples = series.shape
@@ -491,17 +492,16 @@ class StochasticModel:
 
         return cached
 
-    def integrate_covariance_from_analytic_spectrum(self, params, covariance):
-        return np.array([
-            [
-                scipy.integrate.quad(
-                    lambda x: abs(
-                        self.calculate_spectrum(params, covariance, x)
-                    )[r, c], -0.5, 0.5
-                )[0]
-                for c in range(len(self.vars))
-            ] for r in range(len(self.vars))
-        ])
+    def integrate_covariance_from_analytic_spectrum(
+        self,
+        params,
+        covariance,
+        nfreqs=1024
+    ):
+        return np.sum([
+            self.calculate_spectrum(params, covariance, f)
+            for f in np.linspace(-0.5, 0.5, nfreqs)
+        ], axis=0) / nfreqs
 
     def state_space(self, params):
         cached = self.get_cached_matrices(params)
