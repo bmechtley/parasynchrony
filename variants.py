@@ -70,13 +70,13 @@ def plot(configfile, separate=False):
             pbdict.getkeypath(config, '/model/params').iteritems()
         }
 
-        covariance = np.array(pbdict.getkeypath(config, '/model/covariance'))
+        noise = np.array(pbdict.getkeypath(config, '/model/noise'))
 
         # Get the spectrum.
         freqs = np.linspace(0, 0.5, config.get('nfreqs', 100))
 
         spectrum = np.array([
-            model.calculate_spectrum(sym_params, covariance, v)
+            model.calculate_spectrum(sym_params, noise, v)
             for v in freqs
         ]).T
 
