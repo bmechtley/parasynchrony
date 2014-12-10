@@ -499,12 +499,32 @@ class StochasticModel:
         noise,
         nfreqs=1024
     ):
+        """
+        Compute numerically integrated covariance for the system state over
+        a specified number of frequencies.
+
+        :param params (dict): model parameter values keyed by sympy symbols.
+        :param noise (np.ndarray): noise covariance.
+        :param nfreqs (int): number of frequencies over which to sum (default:
+            1024).
+        :return (np.ndarray): covariance matrix.
+        """
+
         return np.sum([
             self.calculate_spectrum(params, noise, f)
             for f in np.linspace(-0.5, 0.5, nfreqs)
         ], axis=0) / nfreqs
 
     def state_space(self, params):
+        """
+        Return the (A, B, C, D) state space representation for the model for
+        use with scipy.signal methods.
+
+        :param params (dict): model parameters keyed by sympy symbols.
+        :return (np.ndarray, np.ndarray, np.ndarray, np.ndarray): state space
+            representation matrices.
+        """
+
         cached = self.get_cached_matrices(params)
         a, b = [np.matrix(cached[k]) for k in 'A', 'B']
 
@@ -513,6 +533,12 @@ class StochasticModel:
         return a, b, np.eye(len(a)), np.zeros(a.shape)
 
     def zeros_and_poles(self, params):
+        """
+        Return the zeros and poles for the model.
+
+        :param params (dict): model parameters keyed by sympy symbols.
+        :return (np.ndarray, np.ndarray): lists of zeros and poles.
+        """
         num, den = scipy.signal.ss2tf(*self.state_space(params))
 
         # print 'num', num
