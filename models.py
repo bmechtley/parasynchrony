@@ -143,7 +143,7 @@ def spectrum(series, **csdargs):
     csdargs.setdefault('window', mlab.window_none)
 
     nbins = csdargs['NFFT'] / 2 + 1
-    sxy = np.empty((nstates, nstates, nbins), dtype=complex)
+    sxy = np.zeros((nstates, nstates, nbins), dtype=complex)
     freqs = np.linspace(0, csdargs.get('Fs') / 2.0, nbins)
 
     # Only compute cross-spectra once for combination of state variables.
