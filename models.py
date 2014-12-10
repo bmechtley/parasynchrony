@@ -47,6 +47,7 @@ def solve_axatc(a, c):
     a, c = [np.matrix(m) for m in a, c]
     evals, evecs = [np.matrix(m) for m in np.linalg.eig(a)]
 
+    # TODO: @ Maybe this needs to be evals * evals.getH(), if it matters?
     phi = np.ones(evals.shape) - evals.getH() * evals
     gamma = np.linalg.inv(evecs) * c * np.linalg.inv(evecs.getH())
     x_tilde = np.multiply(1. / phi, gamma)
@@ -495,11 +496,11 @@ class StochasticModel:
     def integrate_covariance_from_analytic_spectrum(
         self,
         params,
-        covariance,
+        noise,
         nfreqs=1024
     ):
         return np.sum([
-            self.calculate_spectrum(params, covariance, f)
+            self.calculate_spectrum(params, noise, f)
             for f in np.linspace(-0.5, 0.5, nfreqs)
         ], axis=0) / nfreqs
 
@@ -527,12 +528,12 @@ class StochasticModel:
 
         return zpks
 
-    def calculate_covariance(self, params, covariance):
+    def calculate_covariance(self, params, noise):
         """
         Calculate the covariance (autocovariance with lag zero) for the model.
 
         :param params (dict): parameter values with SymPy symbol keys.
-        :param covariance (np.array): covariance of the noise.
+        :param noise (np.array): covariance of the noise.
         :return: (np.array): covariance matrix.
         """
 
@@ -540,10 +541,10 @@ class StochasticModel:
 
         cached = self.get_cached_matrices(params)
         a, b = [np.matrix(cached[k]) for k in 'A', 'B']
-        covariance = np.matrix(covariance)
+        noise = np.matrix(noise)
 
         # R(0) = M1 R(0) M1' + Q0 Sigma Q0'
-        return solve_axatc(-a, b * covariance * b.T)
+        return solve_axatc(-a, b * noise * b.T)
 
 
     def calculate_eigenvalues(self, params):
@@ -559,14 +560,14 @@ class StochasticModel:
         cached = self.get_cached_matrices(params)
         return np.linalg.eig(cached['A'])
 
-    def calculate_spectrum(self, params, covariance, v=0):
+    def calculate_spectrum(self, params, noise, v=0):
         """
         Calculate the spectral matrix according to the model linearized around
         its equilibrium. Note that linearize() must be called before this.
 
         :param params: (dict) free parameters to the model (excluding
             state/noise). Keys are SymPy symbols.
-        :param covariance: (np.array) covariance of the noise, assuming each
+        :param noise: (np.array) covariance of the noise, assuming each
             noise parameter is a dimension of a multivariate normal, with
             dimensions ordered according to self.noises.
         :return: NxN matrix of co-spectra, where N is the number of state
@@ -588,9 +589,9 @@ class StochasticModel:
 
         r = np.dot(r1, cached['B'])
 
-        return np.dot(np.dot(r,  covariance), np.conj(r.T))
+        return np.dot(np.dot(r,  noise), np.conj(r.T))
 
-    def simulate(self, initial, params, covariance, timesteps=1000):
+    def simulate(self, initial, params, noise, timesteps=2**10):
         """
         Start from an initial point and simulate the model with sampled noise.
 
@@ -598,7 +599,7 @@ class StochasticModel:
             according to self.vars.
         :param params: (dict) free parameters to the model (excluding state/
             noise). Keys are SymPy symbols.
-        :param covariance: (np.array) covariance of the noise, assuming each
+        :param noise: (np.array) covariance of the noise, assuming each
             noise parameter is a dimension of a multivariate normal, with
             dimensions ordered according to self.noises.
         :param timesteps: (int) number of timesteps to simulate.
@@ -637,13 +638,13 @@ class StochasticModel:
         )
 
         # Simulate the model.
-        rnoise_mean = np.zeros((len(covariance),))
+        rnoise_mean = np.zeros((len(noise),))
         self.simulated = np.zeros((timesteps, len(initial)))
         self.simulated[0] = initial
 
         for step in range(1, timesteps):
             # Generate random noise with the given covariance.
-            rnoise = np.random.multivariate_normal(rnoise_mean, covariance)
+            rnoise = np.random.multivariate_normal(rnoise_mean, noise)
 
             # Fill the model parameters with the output of the last iteration.
             for i, noise_var in enumerate(self.noises):
@@ -659,7 +660,7 @@ class StochasticModel:
 
         return self.simulated.T
 
-    def simulate_linear(self, initial, params, covariance, timesteps=1000):
+    def simulate_linear(self, initial, params, noise, timesteps=1000):
         """
         Start from an initial point and simulate the model linearized about
         the equilibrium with sampled noise.
@@ -668,7 +669,7 @@ class StochasticModel:
             according to self.vars.
         :param params: (dict) free parameters to the model (excluding state/
             noise). Keys are SymPy symbols.
-        :param covariance: (np.array) Covariance of the noise, assuming each
+        :param noise: (np.array) Covariance of the noise, assuming each
             noise parameter is a dimension of a multivariate normal, with
             dimensions ordered according to self.noises.
         :param timesteps: (int) number of timesteps to simulate.
@@ -688,8 +689,8 @@ class StochasticModel:
                 1
             ),
             np.random.multivariate_normal(
-                np.zeros((len(covariance),)),
-                covariance,
+                np.zeros((len(noise),)),
+                noise,
                 timesteps
             ),
             x0=initial
