@@ -34,15 +34,15 @@ def cov_integrated(model, noise, params, maxfreqs=2**12):
         of frequencies over which each was integrated.
     """
 
-    nfreqs_trials = 2**np.arange(4, int(np.log2(maxfreqs)))
+    nfreqs = 2**np.arange(4, int(np.log2(maxfreqs)))
 
     cov = np.array([
         model.integrate_covariance_from_analytic_spectrum(
-            params, noise, nfreqs
-        ) for nfreqs in nfreqs_trials
+            params, noise, f
+        ) for f in nfreqs
     ])
 
-    return cov, nfreqs_trials
+    return cov, nfreqs
 
 
 def pool_cov(data):
@@ -100,12 +100,12 @@ def cov_simulated(model, noise, params, maxtimesteps=2**12, trials=2**6):
 
 def plot_convergences(
         model=None,
-        plotpath='covariance-test.pdf',
         analytic=None,
         integrated=None,
         simulated=None,
         nfreqs=None,
         nsteps=None,
+        plotpath='covariance-test.pdf',
         **_
 ):
     """
