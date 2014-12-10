@@ -10,9 +10,9 @@ defines a StochasticModel class which is a generalized class for stochastic
 difference equations, allowing the automatic analytic linearization of
 sufficiently simple nonlinear models using SymPy. Additionally, the class
 Parasitism contains several class methods for constructing prefab
-StochasticModels, e.g. stochastic AR-1 processes, Nicholson-Bailey, and
-Nicholson-Bailey with negative binomial functional response, as well as a
-constructor that can use any of these single-patch models to create a
+StochasticModels, e.g. stochastic AR-1 processes (ar1), Nicholson-Bailey (nb),
+and Nicholson-Bailey with negative binomial functional response (nbd) as well as
+a generator that can use any of these single-patch models to create a
 multipatch model with global dispersal.
 """
 
