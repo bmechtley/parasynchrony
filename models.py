@@ -24,9 +24,6 @@ import itertools
 import scipy.signal
 import scipy.integrate
 
-import matplotlib
-matplotlib.rcParams['text.usetex'] = True
-matplotlib.rcParams["text.latex.preamble"].append(r'\usepackage{xfrac}')
 import matplotlib.colors as mplcolors
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as pp
