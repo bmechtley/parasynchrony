@@ -551,6 +551,12 @@ class StochasticModel:
 
         return zpks
 
+    def transfer_function(self, params):
+        cached = self.get_cached_matrices(params)
+        a, b = cached['A'], cached['B']
+
+        return lambda z: np.linalg.inv(z * np.eye(len(self.vars)) - a) * b
+
     def calculate_covariance(self, params, noise):
         """
         Calculate the covariance (autocovariance with lag zero) for the model.
