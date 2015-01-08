@@ -49,7 +49,7 @@ def plot(configfile, separate=False):
         # Set up the figure. Outside axes are for the legend.
         if separate or r == 0:
             axpanes = None
-            pp.figure(figsize=(15,15))
+            pp.figure(figsize=(15, 15))
 
             ax = pp.subplot(111)
             ax.patch.set_visible(False)
