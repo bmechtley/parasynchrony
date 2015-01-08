@@ -64,7 +64,7 @@ def plot_shade_percentile(x, y, ax=None, perc=95, **kwargs):
 
 
 def plot_fraction(
-        model, params, noisecov,
+        model, params, noise,
         cell=None, nfreqs=1000, plotarglist=None, ax=None
 ):
     """
@@ -80,7 +80,7 @@ def plot_fraction(
 
     :param model (models.StochasticModel): stochastic model specification.
     :param params (list): list of dictionaries containing parameter/value pairs.
-    :param noisecov (list): list of numpy arrays for the noise covariance for
+    :param noise (list): list of numpy arrays for the noise covariance for
         each different set of parameters. Should be the same length as params.
     :param cell (tuple): combination of state variables for which to plot the
         cospectrum.
@@ -107,7 +107,7 @@ def plot_fraction(
 
     spectra = np.array([
         np.array([
-            model.calculate_spectrum(sym_params[i], noisecov[i], v)
+            model.calculate_spectrum(sym_params[i], noise[i], v)
             for v in freqs
         ]).T
         for i in range(len(params))
@@ -116,7 +116,7 @@ def plot_fraction(
     # Compute models' covariance matrices analytically for normalization.
 
     covariance = [
-        model.calculate_covariance(sym_params[i], noisecov[i])
+        model.calculate_covariance(sym_params[i], noise[i])
         for i in range(len(params))
     ]
 
@@ -136,11 +136,12 @@ def plot_fraction(
         for i, (spec, cov) in enumerate(itertools.izip(spectra, covariance))
     ]
 
-    zeros_and_poles = [model.zeros_and_poles(symp) for symp in sym_params]
+    #zeros_and_poles = [model.zeros_and_poles(symp) for symp in sym_params]
+    #print zeros_and_poles
 
     # Make the plots for each set of model parameters.
-    for i, (spec, (zeros, poles, gain), plotargs) in enumerate(
-            itertools.izip(spectra, zeros_and_poles, plotarglist)
+    for i, (spec, plotargs) in enumerate(
+            itertools.izip(spectra, plotarglist)
     ):
         # Subplot 1: Plot cospectrum, zeros and poles.
         plot_shade_percentile(freqs, spec['pow'], ax=ax[0], **plotargs)
@@ -149,13 +150,13 @@ def plot_fraction(
         plot_shade_percentile(freqs, spec['norm'], ax=ax[2], **plotargs)
 
         # Draw poles and zeros on both subplots.
-        for z in zeros:
-            ax[3].axvline(np.angle(z) / (2 * np.pi), ls='--', **plotargs)
+        # for z in zeros:
+        #     ax[3].axvline(np.angle(z) / (2 * np.pi), ls='--', **plotargs)
+        #
+        # for p in poles:
+        #     ax[3].axvline(np.angle(p) / (2 * np.pi), ls=':', **plotargs)
 
-        for p in poles:
-            ax[3].axvline(np.angle(p) / (2 * np.pi), ls=':', **plotargs)
-
-        ax[3].axhline(gain, ls='-.', **plotargs)
+        # ax[3].axhline(gain, ls='-.', **plotargs)
 
         # Draw two lines: one for fraction of maximum, one for fraction of mean.
         # TODO: @ Should we use fraction of mean/max, or mean/max of fraction?
