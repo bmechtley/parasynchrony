@@ -4,7 +4,6 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as pp
 
 import itertools
-import utilities
 import models
 
 
@@ -24,7 +23,9 @@ class TransferPlot:
         self.nvals = 20
         self.values = np.linspace(-1.0, 1.0, self.nvals)
         self.extent = [min(self.values), max(self.values)] * 2
-        self.circlepts = [np.exp(1j * f) for f in np.linspace(0, 2 * np.pi, 100)]
+        self.circlepts = [
+            np.exp(1j * f) for f in np.linspace(0, 2 * np.pi, 100)
+        ]
 
         self.fig, self. subplots = pp.subplots(self.nvars, self.nvars)
         pp.subplots_adjust(top=0.78, bottom=0.1, wspace=0.3, hspace=0.3)
@@ -69,7 +70,7 @@ class TransferPlot:
             )
         )
 
-        self.buttons = dict(
+        self.toggles = dict(
             modelb=matplotlib.widgets.Button(
                 pp.axes([0.1, 0.81, 0.08, 0.04], axisbg='white'), 'model'
             ),
@@ -82,9 +83,9 @@ class TransferPlot:
             )
         )
 
-        self.buttons['modelb'].on_clicked(self.toggle_model)
-        self.buttons['eigb'].on_clicked(self.toggle_showz)
-        self.buttons['zb'].on_clicked(self.toggle_showeigs)
+        self.toggles['modelb'].on_clicked(self.toggle_model)
+        self.toggles['eigb'].on_clicked(self.toggle_showz)
+        self.toggles['zb'].on_clicked(self.toggle_showeigs)
 
         self.h = np.zeros([self.nvals, self.nvals, self.nvars, self.nvars])
 
@@ -106,7 +107,9 @@ class TransferPlot:
 
     def update(self, val):
         params = {k: self.sliders[k].val for k in self.sliders}
-        sym_params = {models.Parasitism.params[k]: v for k, v in params.iteritems()}
+        sym_params = {
+            models.Parasitism.params[k]: v for k, v in params.iteritems()
+        }
         xfer = self.model.transfer_function(sym_params)
 
         valrange = range(self.nvals)
