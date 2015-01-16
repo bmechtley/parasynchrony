@@ -39,25 +39,17 @@ class TransferPlot:
         self.nvals = 20
         self.values = np.linspace(-1.0, 1.0, self.nvals)
         self.extent = [min(self.values), max(self.values)] * 2
-        self.circlepts = [
-            np.exp(1j * f) for f in np.linspace(0, 2 * np.pi, 100)
-        ]
+        self.circlepts = np.exp(1j * np.linspace(0, 2 * np.pi, 100))
 
         # Set up subplots. 4x4 for 2-patch NBD (host, host, para, para).
         self.fig, self. subplots = pp.subplots(self.nvars, self.nvars)
         pp.subplots_adjust(top=0.78, bottom=0.1, wspace=0.3, hspace=0.3)
 
         # Images for transfer function plots.
-        self.imgs = np.array(
-            [[None for c in range(self.nvars)] for r in range(self.nvars)],
-            dtype=object
-        )
+        self.imgs = np.empty((self.nvars, self.nvars), dtype=object)
 
         # Scatterplots for eigenvalues.
-        self.scats = np.array(
-            [[None for c in range(self.nvars)] for r in range(self.nvars)],
-            dtype=object
-        )
+        self.scats = np.empty((self.nvars, self.nvars), dtype=object)
 
         # Sliders for model parameters.
         self.sliders = dict(
