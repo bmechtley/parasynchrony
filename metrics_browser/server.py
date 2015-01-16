@@ -61,7 +61,6 @@ def get_pcolor():
         sorted(params.items()) + sorted(axes.items()) + sorted(dims.items())
     )))
 
-    print type(hhash), hhash
     print "<pcolor> Loading transfer function %s." % hhash
 
     if hhash not in hcache.keys():
