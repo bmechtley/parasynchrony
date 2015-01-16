@@ -1,0 +1,220 @@
+<html>
+    <head>
+        <title>parasynchrony transfer function test</title>
+        <script src="/static/js/jquery-2.1.1.js"></script>
+        <script src="/static/js/jquery-ui.js"></script>
+        <script src="/static/js/jquery-ui-slider-pips.js"></script>
+        <script src="/static/js/svg.min.js"></script>
+        <script src="/static/js/underscore-min.js"></script>
+        <script src="/static/js/sprintf.min.js"></script>
+
+        <link href="/static/css/jquery-ui.css" rel="stylesheet">
+        <link href="/static/css/jquery-ui-slider-pips.css" rel="stylesheet">
+    </head>
+
+    <style>
+        #params {
+            margin: 2em;
+            padding: 1em;
+            border: 1px dashed lightgray;
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        .paramcontainer {
+            margin-bottom: 1em;
+        }
+
+        .paramcontainer .ui-slider {
+            display: inline-block;
+            width: 20em;
+            vertical-align: middle;
+        }
+
+        .paramcontainer label {
+            display: inline-block;
+            width: 3em;
+            vertical-align: top;
+            height: 2em;
+            text-align: right;
+            margin-right: 1em;
+            margin-top: 0;
+        }
+
+        .paramcontainer input[type=radio] {
+            display: inline-block;
+            vertical-align: top;
+            margin: 0.2em 1em 1em;
+        }
+
+        #visualizations {
+            margin: 2em;
+            padding: 1em;
+            border: 1px dashed lightgray;
+            display: inline-block;
+
+            width: 41em;
+            height: 41em;
+        }
+
+        #visualizations .image {
+            display: inline-block;
+            height: 10em;
+            width: 10em;
+            margin: 0;
+            padding: 0;
+            border: 1px dashed lightgray;
+            vertical-align: top;
+        }
+
+        svg .unitcircle {
+            stroke: white !important;
+            stroke-width: 1 !important;
+            stroke-dasharray: 4,4 !important;
+            stroke-opacity: 0.5;
+            fill: none !important;
+        }
+
+        select {
+            margin-left: 1em;
+        }
+    </style>
+
+    <body>
+        <div id="params"></div>
+        <div id="visualizations"></div>
+    </body>
+
+    <script type="text/javascript">
+        // Model parameter sliders and axis radio buttons.
+        var params = {
+            r: {init: 3.0, min: 0, max: 10},
+            a: {init: 0.5, min: 0, max: 10},
+            c: {init: 1.0, min: 0, max: 10},
+            k: {init: 0.9, min: 0, max: 10},
+            mh: {init: 0.25, min: 0, max: 1.0},
+            mp: {init: 0.25, min: 0, max: 1.0}
+        };
+
+        var metrics = [
+            'fraction max synchrony',
+            'fraction avg synchrony',
+            'transfer function'
+        ];
+
+        var dims = {
+            width: 50,
+            height: 50
+        };
+
+        function draw_transfer_function(element, xfer_uri) {
+            var image = element.find('image:first').attr('href', xfer_uri);
+
+            if (!image.length) {
+                (function(draw) {
+                    draw.image(xfer_uri).size('100%', '100%').x(0).y(0);
+                    draw.circle('100%').x(0).y(0).addClass('unitcircle');
+                    draw.line(0, '50%', '100%', '50%').addClass('unitcircle');
+                    draw.line('50%', 0, '50%', '100%').addClass('unitcircle');
+                })(SVG(element[0]));
+            }
+        }
+
+        function update_plots() {
+            $.getJSON(
+                '/pcolor.json?',
+                _.extend({}, dims, object(
+                    _.keys(params).map(function(p) {
+                        return [
+                            p,
+                            $('div[data-prop="value"][data-param="' + p + '"]')
+                                .slider('value')
+                        ];
+                    })
+                )), function(data) {
+                    _.each(data.images, function (images, row) {
+                        _.each(images, function (image, col) {
+                            draw_transfer_function(
+                                $([
+                                    'div[data-prop="pcolor"]',
+                                    '[data-row="' + row + '"]',
+                                    '[data-col="' + col + '"]'
+                                ].join('')),
+                                image
+                            );
+                        });
+                    });
+                }
+            )
+        }
+
+        function update_axes() {
+            $('div[data-prop="value"]').each(function() {
+                (function (p) {
+                    p.slider({disabled: !['x', 'y'].every(function(ax) {
+                        return !$(sprintf(
+                            'input[data-param="%s"][data-axis="%s"]',
+                            p.attr('data-param'), ax
+                        )).prop('checked');
+                    })})
+                })($(this));
+            });
+        }
+
+        $(document).ready(function() {
+            $('#visualizations').append(
+                _.flatten(_.range(4).map(function(row) {
+                    return _.range(4).map(function(col) {
+                        return $('<div/>', {
+                            class: 'image',
+                            "data-row": row,
+                            "data-col": col,
+                            "data-prop": "pcolor"
+                        });
+                    });
+                }))
+            );
+
+            $('#params')
+                // Sliders and axis radio buttons.
+                .append(_.map(params, function(param, name) {
+                    return $('<div/>', {class: 'paramcontainer'})
+                        // Label.
+                        .append($('<label/>', {text: name}))
+                        // Slider.
+                        .append(
+                            $('<div/>', {
+                                "data-param": name,
+                                "data-prop": "value"
+                            }).slider(param).slider({
+                                step: (param.max - param.min) / 100.0,
+                                value: param.init,
+                                change: update_plots
+                            }).slider("pips", {
+                                step: (param.max - param.min) / 10.0
+                            }).slider("float")
+                        )
+                        // Axis radio buttons.
+                        .append(['x', 'y'].map(function (axis) {
+                            return $('<input/>', {
+                                type: 'radio',
+                                "data-param": name,
+                                "data-axis": axis,
+                                "data-prop": "axis",
+                                name: axis + '-axis',
+                                value: name
+                            }).click(update_axes);
+                        }));
+                }))
+                // Select menu for metric.
+                .append($('<label></label>', {text: 'metric', for: "metric"}))
+                .append(
+                    $('<select></select>', {name: 'metric'}).append(
+                        metrics.map(function(metric) {
+                            return $('<option></option>', {text: metric})
+                        })
+                    )
+                );
+        });
+    </script>
+</html>
