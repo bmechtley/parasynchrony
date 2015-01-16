@@ -81,30 +81,40 @@
     </style>
 
     <body>
-        <div id="params"></div>
+        <form id="params" >
+
+        </form>
         <div id="visualizations"></div>
     </body>
 
     <script type="text/javascript">
         // Model parameter sliders and axis radio buttons.
         var params = {
-            r: {init: 3.0, min: 0, max: 10},
-            a: {init: 0.5, min: 0, max: 10},
-            c: {init: 1.0, min: 0, max: 10},
-            k: {init: 0.9, min: 0, max: 10},
-            mh: {init: 0.25, min: 0, max: 1.0},
-            mp: {init: 0.25, min: 0, max: 1.0}
+            r: {init: 3.0, min: 0, max: 10, symbol: '&lambda;'},
+            a: {init: 0.5, min: 0, max: 10, symbol: 'a'},
+            c: {init: 1.0, min: 0, max: 10, symbol: 'c'},
+            k: {init: 0.9, min: 0, max: 10, symbol: 'k'},
+            mh: {init: 0.25, min: 0, max: 1.0, symbol: '&mu;<sub>H</sub>'},
+            mp: {init: 0.25, min: 0, max: 1.0, symbol: '&mu;<sub>P</sub>'}
         };
 
-        var metrics = [
-            'fraction max synchrony',
-            'fraction avg synchrony',
-            'transfer function'
-        ];
+        var metrics = {
+            maxsync: {name: 'fraction max synchrony', twoaxis: true},
+            avgsync: {name: 'fraction avg synchrony', twoaxis: true},
+            xfer: {name: 'transfer function', twoaxis: false}
+        };
 
         var dims = {
             width: 50,
             height: 50
+        };
+
+        $.fn.attrdict = function(key, attr) {
+            console.log('attrdict', this, key, attr);
+            return _.object(_.map(this, function(el) {
+                console.log('el', el);
+                return [key(el), attr(el)]
+            }));
         };
 
         function draw_transfer_function(element, xfer_uri) {
@@ -122,26 +132,15 @@
 
         function update_plots() {
             $.getJSON(
-                '/pcolor.json?',
-                _.extend({}, dims, object(
-                    _.keys(params).map(function(p) {
-                        return [
-                            p,
-                            $('div[data-prop="value"][data-param="' + p + '"]')
-                                .slider('value')
-                        ];
-                    })
-                )), function(data) {
+                '/pcolor.json?' + $('#params').serialize(),
+                dims,
+                function(data) {
                     _.each(data.images, function (images, row) {
                         _.each(images, function (image, col) {
-                            draw_transfer_function(
-                                $([
-                                    'div[data-prop="pcolor"]',
-                                    '[data-row="' + row + '"]',
-                                    '[data-col="' + col + '"]'
-                                ].join('')),
-                                image
-                            );
+                            draw_transfer_function($(sprintf(
+                                'div[data-prop=pcolor][data-row=%s][data-col=%s]',
+                                row, col
+                            )), image);
                         });
                     });
                 }
@@ -152,10 +151,12 @@
             $('div[data-prop="value"]').each(function() {
                 (function (p) {
                     p.slider({disabled: !['x', 'y'].every(function(ax) {
-                        return !$(sprintf(
-                            'input[data-param="%s"][data-axis="%s"]',
+                        return (function(input) {
+                            return !input.prop('checked');
+                        })($(sprintf(
+                            'input[data-param=%s][data-axis=%s]',
                             p.attr('data-param'), ax
-                        )).prop('checked');
+                        )))
                     })})
                 })($(this));
             });
@@ -180,16 +181,27 @@
                 .append(_.map(params, function(param, name) {
                     return $('<div/>', {class: 'paramcontainer'})
                         // Label.
-                        .append($('<label/>', {text: name}))
+                        .append($('<label/>', {html: param.symbol}))
                         // Slider.
+                        .append($('<input/>', {
+                            type: 'hidden',
+                            name: name,
+                            value: param.init
+                        }))
                         .append(
                             $('<div/>', {
-                                "data-param": name,
-                                "data-prop": "value"
+                                'data-param': name,
+                                'data-prop': 'value',
                             }).slider(param).slider({
                                 step: (param.max - param.min) / 100.0,
                                 value: param.init,
-                                change: update_plots
+                                change: function(ev) {
+                                    $(sprintf(
+                                        'input[name=%s]',
+                                        $(ev.target).attr('data-param')
+                                    )).val($(ev.target).slider('value'));
+                                    update_plots();
+                                }
                             }).slider("pips", {
                                 step: (param.max - param.min) / 10.0
                             }).slider("float")
@@ -198,21 +210,39 @@
                         .append(['x', 'y'].map(function (axis) {
                             return $('<input/>', {
                                 type: 'radio',
-                                "data-param": name,
-                                "data-axis": axis,
-                                "data-prop": "axis",
+                                'data-param': name,
+                                'data-axis': axis,
+                                'data-prop': 'axis',
                                 name: axis + '-axis',
                                 value: name
                             }).click(update_axes);
                         }));
                 }))
                 // Select menu for metric.
-                .append($('<label></label>', {text: 'metric', for: "metric"}))
+                .append($('<label/>', {text: 'metric', for: 'metric'}))
                 .append(
-                    $('<select></select>', {name: 'metric'}).append(
-                        metrics.map(function(metric) {
-                            return $('<option></option>', {text: metric})
+                    $('<select/>', {
+                        name: 'metric',
+                        'data-prop': 'metric',
+                    }).append(
+                        _.map(metrics, function(metric, key) {
+                            return $('<option></option>', {
+                                text: metric.name,
+                                name: key
+                            })
                         })
+                    ).change(
+                        function(ev) {
+                            (function(twoaxis, radios) {
+                                radios.prop('disabled', !twoaxis);
+                                //if (!twoaxis) radios.prop('checked', false);
+                            })(
+                                metrics[$(ev.target).children(
+                                    'option:selected:first'
+                                ).attr('name')].twoaxis,
+                                $('input[data-prop=axis]')
+                            )
+                        }
                     )
                 );
         });
