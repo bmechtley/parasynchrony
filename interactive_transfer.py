@@ -24,7 +24,7 @@ class TransferPlot:
 
     def __init__(self):
         # Initialize the model.
-        self.model = models.Parasitism.get_model("nbd(2)")
+        self.model = models.parasitism.get_model("nbd(2)")
         self.nvars = len(self.model.vars)
         self.covariance = np.array([
             [1E-1, 1E-2, 0, 0],
@@ -127,7 +127,7 @@ class TransferPlot:
 
         params = {k: self.sliders[k].val for k in self.sliders}
         sym_params = {
-            models.Parasitism.params[k]: v for k, v in params.iteritems()
+            models.parasitism.params[k]: v for k, v in params.iteritems()
         }
         xfer = self.model.transfer_function(sym_params)
 

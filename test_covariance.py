@@ -62,6 +62,7 @@ def pool_cov(data):
         rowvar=1
     )
 
+
 def cov_simulated(model, noise, params, maxtimesteps=2**12, trials=2**6):
     """
     Simulate the linear model multiple times for an increasing number of
@@ -199,6 +200,7 @@ def plot_convergences(
     print 'Saving %s.' % plotpath
     pp.savefig(plotpath)
 
+
 def main():
     """
     usage: python covariance_test.py {config.json, output.pickle}
@@ -213,12 +215,12 @@ def main():
             config = json.load(open(sys.argv[1]))
 
             # a. Create the model from the loaded configuration.
-            plotargs['model'] = models.Parasitism.get_model(
+            plotargs['model'] = models.parasitism.get_model(
                 config['simulation']['model']
             )
             plotargs['noise'] = np.array(config['simulation']['noise'])
             plotargs['params'] = {
-                models.Parasitism.params[name]: value for name, value in
+                models.parasitism.symbols[name]: value for name, value in
                 config['simulation']['params'].iteritems()
             }
 

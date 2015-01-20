@@ -12,6 +12,7 @@ import pybatchdict
 import numpy as np
 from numpy.lib.stride_tricks import as_strided as ast
 
+
 def decode_list(data):
     """
     Helper for opening JSON data with non-UTF-8 encoding. This recursively

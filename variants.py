@@ -62,11 +62,11 @@ def plot(configfile, separate=False):
         if modelname in modelcache:
             model = modelcache[modelname]
         else:
-            model = models.Parasitism.get_model(modelname)
+            model = models.parasitism.get_model(modelname)
 
         # Set up model parameters.
         sym_params = {
-            models.Parasitism.params[name]: value for name, value in
+            models.parasitism.params[name]: value for name, value in
             pbdict.getkeypath(config, '/model/params').iteritems()
         }
 
@@ -96,7 +96,7 @@ def plot(configfile, separate=False):
         else:
             plotargs['color'] = cm.rainbow(float(r) / (len(cnames) - 1))
 
-        axpanes = models.plot_cospectra(freqs, spectrum, **plotargs)
+        axpanes = models.plotting.plot_cospectra(freqs, spectrum, **plotargs)
 
         if separate:
             figpath = os.path.join(configdir, 'spectra-%s.png' % cname)

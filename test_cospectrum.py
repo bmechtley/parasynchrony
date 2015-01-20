@@ -60,6 +60,7 @@ from itertools import combinations_with_replacement, izip
 
 import numpy as np
 import matplotlib.pyplot as pp
+import matplotlib.cm
 
 import pybatchdict as pbdict
 
@@ -126,7 +127,7 @@ def plot_series(picklefile):
     for run, ls in izip(['linear', 'nonlinear'], [False, True]):
         pp.figure(figsize=(15, 15))
 
-        models.plot_phase(
+        models.plotting.plot_phase(
             series[run],
             varnames='H_1 H_2 P_1 P_2'.split(),
             logscale=ls,
@@ -277,7 +278,7 @@ def plot_spectra(srcfile, separate=False):
 
         # Plot each spectrum type as two-pane mag/phase plots.
         for spec, color in colordict.iteritems():
-            axpanes = models.plot_cospectra(
+            axpanes = models.plotting.plot_cospectra(
                 run['freqs'],
                 run['spectra'][spec],
                 axpanes=axpanes,
@@ -290,7 +291,7 @@ def plot_spectra(srcfile, separate=False):
         # Only plot the analytic result once, for the very last run (i.e.
         # likely the run with the most spectral data points.)
         if i == len(runs) - 1 or separate:
-            models.plot_cospectra(
+            models.plotting.plot_cospectra(
                 run['freqs'],
                 run['spectra']['analytic'],
                 axpanes=axpanes,
@@ -468,13 +469,13 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
 
         # Symbol substitution for parameters.
         sym_params = {
-            models.Parasitism.params[name]: value for name, value in
+            models.parasitism.params[name]: value for name, value in
             pbdict.getkeypath(config, '/simulation/params').iteritems()
         }
 
         # Simulate time series. Cache time series to avoid re-simulating for
         # the same parameter values.
-        model = models.Parasitism.get_model(
+        model = models.parasitism.get_model(
             pbdict.getkeypath(config, '/simulation/model')
         )
 
@@ -568,8 +569,13 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
                 nonlinear = nonlinear[:, -csdargs['NFFT']:]
 
             # Compute cross-spectra.
-            freqs, spectra['linear'] = models.spectrum(linear, **csdargs)
-            _, spectra['nonlinear'] = models.spectrum(nonlinear, **csdargs)
+            freqs, spectra['linear'] = models.utilities.spectrum(
+                linear, **csdargs
+            )
+
+            _, spectra['nonlinear'] = models.utilities.spectrum(
+                nonlinear, **csdargs
+            )
 
             # Smooth spectral matrices for better estimate.
             # TODO: @ I'm explicitly doing the median filter here. Probably
@@ -585,21 +591,21 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
             magargs['window'] = 'median'
 
             for i, j in combinations_with_replacement(range(nvars), 2):
-                spectra['linear_smoothed'][i, j] = models.smooth(
+                spectra['linear_smoothed'][i, j] = models.utilities.smooth(
                     spectra['linear'][i, j], **smoothingargs
                 )
 
-                spectra['nonlinear_smoothed'][i, j] = models.smooth(
+                spectra['nonlinear_smoothed'][i, j] = models.utilities.smooth(
                     spectra['nonlinear'][i, j], **smoothingargs
                 )
 
-                spectra['linear_median'][i, j] = models.smooth_phasors(
+                spectra['linear_median'][i, j] = models.utilities.smooth_phasors(
                     spectra['linear'][i, j],
                     magargs=magargs,
                     phasorargs=smoothingargs
                 )
 
-                spectra['nonlinear_median'][i, j] = models.smooth_phasors(
+                spectra['nonlinear_median'][i, j] = models.utilities.smooth_phasors(
                     spectra['nonlinear'][i, j],
                     magargs=magargs,
                     phasorargs=smoothingargs

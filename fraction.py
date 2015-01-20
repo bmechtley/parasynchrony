@@ -36,7 +36,7 @@ import models
 
 # 1. Model parameters.
 # TODO: @ Maybe use pybatchdict for these.
-model = models.Parasitism.get_model("nbd(2)")
+model = models.parasitism.get_model("nbd(2)")
 params = np.array([
     [
         dict(
@@ -73,7 +73,7 @@ oscmags = np.zeros((2, 2, 2, 2, 4))
 
 for migh, migp, morh, morp in itertools.product(range(2), repeat=4):
     sym_params = {
-        models.Parasitism.params[name]: value
+        models.parasitism.symbols[name]: value
         for name, value in params[migh, migp].iteritems()
     }
 

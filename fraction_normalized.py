@@ -96,7 +96,7 @@ def plot_fraction(
     # Parameters as SymPy symbols.
     sym_params = [
         {
-            models.Parasitism.params[name]: value
+            models.parasitism.params[name]: value
             for name, value in p.iteritems()
         }
         for p in params
@@ -136,8 +136,8 @@ def plot_fraction(
         for i, (spec, cov) in enumerate(itertools.izip(spectra, covariance))
     ]
 
-    #zeros_and_poles = [model.zeros_and_poles(symp) for symp in sym_params]
-    #print zeros_and_poles
+    # zeros_and_poles = [model.zeros_and_poles(symp) for symp in sym_params]
+    # print zeros_and_poles
 
     # Make the plots for each set of model parameters.
     for i, (spec, plotargs) in enumerate(
@@ -192,7 +192,7 @@ def plot_fraction(
 
 def main():
     # Initialize model / parameters.
-    model = models.Parasitism.get_model("nbd(2)")
+    model = models.parasitism.get_model("nbd(2)")
 
     baseparams = dict(
         r=3,
