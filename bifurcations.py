@@ -5,21 +5,21 @@ import models
 
 
 def main():
-    model = models.Parasitism.get_model("nbd(2)")
+    model = models.parasitism.get_model("nbd(2)")
     nvars = len(model.vars)
 
     params = dict(r=3.0, a=0.5, c=1.2, k=0.9)
-    params = {models.Parasitism.params[k]: v for k, v in params.iteritems()}
+    params = {models.parasitism.symbols[k]: v for k, v in params.iteritems()}
 
     migrations = np.linspace(0, 1, 100)
     eigs = np.zeros((len(migrations), nvars), dtype=complex)
 
     print 'Computing eigenvalues.'
     for i, migration in enumerate(migrations):
-        params[models.Parasitism.params['mh']] = migration
-        params[models.Parasitism.params['mp']] = migration
+        params[models.parasitism.symbols['mh']] = migration
+        params[models.parasitism.symbols['mp']] = migration
 
-        a = models.eval_matrix(model.A.subs(params))
+        a = models.utilities.eval_matrix(model.A.subs(params))
         evals, evecs = np.linalg.eig(a)
         eigs[i] = evals
 
