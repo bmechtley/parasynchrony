@@ -4,7 +4,6 @@ import json
 import sys
 import os
 import PIL
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 import numpy as np
 import matplotlib.cm
@@ -13,11 +12,12 @@ import matplotlib.colors
 import flask
 from lru import LRU
 
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import models
 
 app = flask.Flask(__name__)
 model = models.parasitism.get_model("nbd(2)")
-hcache = LRU(100)
+datacache = LRU(100)
 
 
 @app.route('/')
@@ -29,10 +29,10 @@ def index():
 def get_image(hhash, row, col):
     print "<image> Looking for image %s (%d, %d)." % (hhash, row, col)
 
-    if hhash in hcache.keys():
+    if hhash in datacache.keys():
         print "<image>\tFound!"
         img_io = StringIO.StringIO()
-        hcache[hhash]['images'][row, col].save(img_io, 'PNG')
+        datacache[hhash]['images'][row, col].save(img_io, 'PNG')
         img_io.seek(0)
         return flask.send_file(img_io, mimetype='image/png')
     else:
@@ -47,24 +47,13 @@ def transfer_function(params=None, domain=None, **_):
 
     xfer = model.transfer_function(sym_params)
 
-    h = np.array([
+    return dict(xfer=np.array([
         [
             xfer(complex(re, im))
             for re in domain[1]
         ]
         for im in domain[0]
-    ])
-
-    logmagh = np.log(np.abs(h) + np.finfo(h.dtype).eps)
-
-    color_norm = matplotlib.colors.Normalize(
-        vmin=np.amin(logmagh[logmagh != np.amin(logmagh)]),
-        vmax=np.amax(logmagh)
-    )
-
-    pcolor = matplotlib.cm.cubehelix(color_norm(logmagh))
-
-    return pcolor
+    ]))
 
 
 def fraction_synchrony(
@@ -93,7 +82,7 @@ def fraction_synchrony(
     :return: dictionary of metric: fraction pairs.
     """
 
-    fracfuns = dict(avg=np.mean, max=np.amax)
+    fracfuns = dict(avgfracsync=np.mean, maxfracsync=np.amax)
 
     results = {
         k: np.zeros((
@@ -129,10 +118,7 @@ def fraction_synchrony(
                 variant['params']['mh'] = 0
                 variant['noise']['Shh'] = 0
 
-            sym_params = {
-                models.parasitism.params[k]: v
-                for k, v in variant['params'].iteritems()
-            }
+            sym_params = models.parasitism.sym_params(variant['params'])
 
             noisecov = np.array([
                 [variant['noise']['Sh'], variant['noise']['Shh'], 0, 0],
@@ -168,22 +154,12 @@ def fraction_synchrony(
                 axis=0
             ))
 
-    color_norms = {
-        k: matplotlib.colors.Normalize(
-            vmin=np.amin(result), vmax=np.amax(result)
-        ) for k, result in results.iteritems()
-    }
+    return results
 
-    return {
-        k: np.array([
-            [
-                matplotlib.cm.cubehelix(color_norms[k](result[:, :, col, row]))
-                for col in range(result.shape[3])
-            ] for row in range(result.shape[2])
-        ]).swapaxes(0, 2).swapaxes(1, 3)
-        for k, result in results.iteritems()
-    }
-
+metrics = [
+    dict(fun=transfer_function, all_axes=['im', 're']),
+    dict(fun=fraction_synchrony, no_axes=['im', 're'])
+]
 
 @app.route('/pcolor.json')
 def get_pcolor():
@@ -205,49 +181,67 @@ def get_pcolor():
         noise={k: float(request.get(k)) for k in ['Shh', 'Sh', 'Spp', 'Sp']}
     )
 
-    hhash = str(hash(json.dumps(inputs, sort_keys=True)))
+    axes = [ax['param'] for ax in inputs['axes']]
 
-    inputs['domain'] = [
-        np.linspace(ax['min'], ax['max'], ax['n'])
-        for ax in inputs['axes'][::-1]
-    ]
+    # Take the axes out of the params to avoid duplicate calculations in
+    # multiple hashes.
+    for ax in axes:
+        inputs['params'][ax] = 0
 
+    # Hash the input parameters for caching calculations.
+    paramhash = str(hash(json.dumps(inputs, sort_keys=True)))
     metric_name = request.get('metric')
-    metric = dict(
-        xfer=transfer_function,
-        avgsync=lambda **kw: fraction_synchrony(**kw)['avg'],
-        maxsync=lambda **kw: fraction_synchrony(**kw)['max']
-    )[metric_name]
 
-    print "<pcolor> Loading metric %s, %s." % (metric_name, hhash), inputs
+    print "<pcolor> Loading metric %s, %s." % (metric_name, paramhash), inputs
 
-    if hhash not in hcache.keys():
+    if paramhash not in datacache.keys():
         print "<pcolor>\tComputing new."
 
-        pcolor = metric(**inputs)
-        print 'pcolor shape', pcolor.shape
+        domain = [
+            np.linspace(ax['min'], ax['max'], ax['n'])
+            for ax in inputs['axes'][::-1]
+        ]
 
-        hcache[hhash] = dict(
-            images=np.array([
-                [
-                    PIL.Image.fromarray(
-                        np.uint8(pcolor[:, :, row, col, :].swapaxes(0, 1) * 255)
-                    )
-                    for col in range(pcolor.shape[3])
-                ]
-                for row in range(pcolor.shape[2])
-            ], dtype=object)
+        datacache[paramhash] = dict(
+            data=dict(
+                sum([
+                    metric['fun'](
+                        **dict(inputs.items() + [('domain', domain)])
+                    ).items()
+                    for metric in metrics
+                    if all([
+                        param in axes for param in metric.get('all_axes', [])
+                    ]) and all([
+                        param not in axes for param in metric.get('no_axes', [])
+                    ])
+                ], [])
+            ),
+            domain=domain,
+            inputs=inputs
         )
 
+    cached = datacache[paramhash]
+    domain = cached['domain']
+    shape = cached['data'][metric_name].shape
+
     jsondata = dict(
-        hash=hhash,
-        images=[
-            [
-                '/image/%s_%d_%d.png' % (hhash, row, col)
-                for col in range(hcache[hhash]['images'].shape[1])
-            ]
-            for row in range(hcache[hhash]['images'].shape[0])
-        ]
+        hash=paramhash,
+        data=dict(children=[
+            dict(
+                var1=str(model.vars[prow]),
+                var2=str(model.vars[pcol]),
+                children=[dict(
+                    param1=domain[0][vrow],
+                    param2=domain[1][vcol],
+                    value=cached['data'][metric_name][vrow, vcol, prow, pcol]
+                ) for vrow, vcol in itertools.product(
+                    range(shape[0]), range(shape[1])
+                )]
+            ) for prow, pcol in itertools.product(
+                range(shape[2]), range(shape[3])
+            )
+        ]),
+        inputs=inputs
     )
 
     return flask.jsonify(**jsondata)
