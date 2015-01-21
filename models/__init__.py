@@ -21,8 +21,9 @@ parasitism: defines several multipatch host-parasitoid StochasticModels.
 plotting: some helper methods for plotting StochasticModel spectra etc.
 """
 
-
-from stochastic import *
+import stochastic
 import utilities
 import parasitism
 import plotting
+
+__all__ = ['stochastic', 'utilities', 'parasitism', 'plotting']
