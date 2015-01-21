@@ -11,6 +11,7 @@ Host-parasitoid StochasticModels. Includes:
     get_model: Any of the above with even dispersal between multiple patches.
 """
 
+import sys
 import sympy
 import stochastic
 
@@ -66,8 +67,8 @@ def nb():
         [h[0], p[0]],
         [eh[0], ep[0]],
         [
-            r * h[0] * sym.exp(-a * p[0]) * sym.exp(eh[0]),
-            c * h[0] * (1 - sym.exp(-a * p[0])) * sym.exp(ep[0])
+            r * h[0] * sympy.exp(-a * p[0]) * sympy.exp(eh[0]),
+            c * h[0] * (1 - sympy.exp(-a * p[0])) * sympy.exp(ep[0])
         ]
     )
 
@@ -89,8 +90,8 @@ def nbd():
         [h[0], p[0]],
         [eh[0], ep[0]],
         [
-            r * h[0] * (1 + a * p[0] / k) ** -k * sym.exp(eh[0]),
-            c * h[0] * (1 - (1 + a * p[0] / k) ** -k) * sym.exp(ep[0])
+            r * h[0] * (1 + a * p[0] / k) ** -k * sympy.exp(eh[0]),
+            c * h[0] * (1 - (1 + a * p[0] / k) ** -k) * sympy.exp(ep[0])
         ]
     )
 
@@ -117,7 +118,7 @@ def get_model(modelstr):
 
     # Tokenize model string to obtain the specified model.
     tokens = modelstr.split('(')
-    refmodel = locals()[tokens[0]]()
+    refmodel = getattr(sys.modules[__name__], tokens[0])()
     refmodel.solve_equilibrium()
     refmodel.linearize()
 
