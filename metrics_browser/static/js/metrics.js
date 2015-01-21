@@ -20,6 +20,11 @@ var metrics = {
     xfer: {name: 'transfer function', force_axes: {x: 're', y: 'im'}}
 };
 
+var selections = {
+    metric: 'xfer',
+    axes: {x: 'im', y: 're'}
+};
+
 var dims = {x: 20, y: 20};
 
 function make_spec(data) {
@@ -94,20 +99,6 @@ function make_spec(data) {
 
 var view;
 
-function selected_metric() {
-    return $('select[name=metric] > option:selected:first')
-        .attr('value')
-}
-
-function selected_axes() {
-    return _.object(_.map(['x', 'y'], function(ax) {
-        return [
-            ax,
-            $('input:radio[name=axis_' + ax + ']:checked').attr('value')
-        ];
-    }));
-}
-
 function draw_vis(element, data_uri) {
     $.get(data_uri, function(data) {
         view = vg.parse.spec(make_spec(data), function (chart) {
@@ -117,35 +108,39 @@ function draw_vis(element, data_uri) {
 }
 
 function update_axes() {
-    var axes = selected_axes();
+    // Update axes selections and disable associated sliders.
+    selections['metric'] = $('select[name=metric]').val();
+    var metric = metrics[selections['metric']];
 
-    if (axes.hasOwnProperty('force_axes')) {
-        $('div[data-prop=value').slider({disabled: false});
+    if (metric.hasOwnProperty('force_axes')) {
+        selections['axes'] = metric.force_axes;
+        $('div[data-prop=value]').slider({disabled: false});
     } else {
-        $('div[data-prop=value]').each(function () {
-            (function (p) {
-                p.slider({
-                    disabled: !['x', 'y'].every(function (ax) {
-                        return !$('input' +
-                            '[data-param=' + p.attr('data-param') + ']' +
-                            '[data-axis=' + ax + ']'
-                        ).prop('checked');
-                    })
-                });
-            })($(this));
-        });
+        var radios = $('input:radio[data-prop=axis]');
+        var x_radios = radios.filter('[data-axis=x]');
+        var y_radios = radios.filter('[data-axis=y]');
+        var sliders = $('div[data-prop=value]');
+
+        for (var param in params) {
+            if (params.hasOwnProperty(param)) {
+                var paramsel = '[data-param=' + param + ']';
+                var x_axis = x_radios.filter(paramsel).prop('checked');
+                var y_axis = y_radios.filter(paramsel).prop('checked');
+                sliders.filter(paramsel).slider({disabled: x_axis || y_axis});
+            }
+        }
     }
 
-    _.each(axes, function(name, ax) {
-        console.log(name, ax, params[name]);
+    // Update values to be sent through form.
+    for (var ax in selections['axes']) {
+        if (selections['axes'].hasOwnProperty(ax)) {
+            var param = params[selections['axes'][ax]];
 
-        $('input[name=axis_' + ax + '_min]')
-            .attr('value', params[name].min);
-        $('input[name=axis_' + ax + '_max]')
-            .attr('value', params[name].max);
-        $('input[name=axis_' + ax + '_n]')
-            .attr('value', dims[ax]);
-    });
+            $('input[name=axis_' + ax + '_min]').val(param.min);
+            $('input[name=axis_' + ax + '_max]').val(param.max);
+            $('input[name=axis_' + ax + '_n]').val(dims[ax]);
+        }
+    }
 }
 
 $(document).ready(function() {
@@ -175,8 +170,7 @@ $(document).ready(function() {
 
                             draw_vis(
                                 '#visualizations',
-                                '/pcolor.json?' +
-                                    $('#params').serialize()
+                                '/pcolor.json?%s' + $('#params').serialize()
                             );
                         }
                     }).slider("pips", {
@@ -199,40 +193,15 @@ $(document).ready(function() {
                 );
         }))
         // Select menu for metric.
-        .append($('<label/>', {
-            text: 'metric', for: 'metric'
-        }))
+        .append($('<label/>', {text: 'metric', for: 'metric'}))
         .append(
-            $('<select/>', {
-                name: 'metric',
-                'data-prop': 'metric'
-            }).append(
+            $('<select/>', {name: 'metric', 'data-prop': 'metric'}).append(
                 _.map(metrics, function(metric, key) {
                     return $('<option/>', {
                         text: metric.name,
                         value: key
                     })
                 })
-            ).change(
-                function() {
-                    var metric = metrics[selected_metric()];
-                    var radios = $('input[data-prop=axis]');
-                    /* TODO: im/re types are hidden, not radio, so can't be checked */
-
-                    if (metric.hasOwnProperty('force_axes')) {
-                        radios.prop('disabled', true);
-
-                        _.each(metric.force_axes, function(name, ax) {
-                            $('input[name=axis_' + name +
-                                '][value=' + ax + ']'
-                            ).prop('checked', true);
-                        });
-                    } else {
-                        radios.prop('disabled', false);
-                    }
-
-                    update_axes();
-                }
-            )
+            ).change(update_axes)
         );
 });
