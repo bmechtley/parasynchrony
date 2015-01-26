@@ -47,13 +47,13 @@ def transfer_function(params=None, domain=None, **_):
 
     xfer = model.transfer_function(sym_params)
 
-    return dict(xfer=np.array([
+    return dict(xfer=np.abs(np.array([
         [
             xfer(complex(re, im))
             for re in domain[1]
         ]
         for im in domain[0]
-    ]))
+    ])))
 
 
 def fraction_synchrony(
@@ -186,7 +186,8 @@ def get_pcolor():
     # Take the axes out of the params to avoid duplicate calculations in
     # multiple hashes.
     for ax in axes:
-        inputs['params'][ax] = 0
+        if ax in inputs['params']:
+            inputs['params'][ax] = 0
 
     # Hash the input parameters for caching calculations.
     paramhash = str(hash(json.dumps(inputs, sort_keys=True)))
@@ -231,9 +232,9 @@ def get_pcolor():
                 var1=str(model.vars[prow]),
                 var2=str(model.vars[pcol]),
                 children=[dict(
-                    param1=domain[0][vrow],
-                    param2=domain[1][vcol],
-                    value=cached['data'][metric_name][vrow, vcol, prow, pcol]
+                    x=domain[1][vcol],
+                    y=domain[0][vrow],
+                    z=cached['data'][metric_name][vrow, vcol, prow, pcol]
                 ) for vrow, vcol in itertools.product(
                     range(shape[0]), range(shape[1])
                 )]
