@@ -15,15 +15,12 @@ var params = {
 };
 
 var metrics = {
-    maxfracsync: {name: 'fraction max synchrony'},
-    avgfracsync: {name: 'fraction avg synchrony'},
+    maxfracsync: {name: 'max fraction synchrony'},
+    avgfracsync: {name: 'avg fraction synchrony'},
     xfer: {name: 'transfer function', force_axes: {x: 're', y: 'im'}}
 };
 
-var selections = {
-    metric: 'xfer',
-    axes: {x: 'im', y: 're'}
-};
+var selections = {metric: 'xfer', axes: {x: 're', y: 'im'}};
 
 var dims = {x: 20, y: 20};
 
@@ -47,10 +44,8 @@ function make_spec(data) {
                 name: 'spx', type: 'ordinal', range: 'width', zero: true,
                 domain: {data: 'tree', field: 'data.var2'}
             }, {
-                name: 'fz',
-                type: 'linear',
-                range: ['#000', '#FFF'],
-                domain: {data: 'flattened', field: 'data.value'}
+                name: 'fz', type: 'linear', range: ['#000', '#FFF'],
+                domain: {data: 'flattened', field: 'data.z'}
             }
         ],
         marks: [
@@ -69,11 +64,11 @@ function make_spec(data) {
                 scales: [
                     {
                         name: 'x', range: 'width', type: 'ordinal', zero: true,
-                        domain: {field: 'data.param2'}
+                        domain: {field: 'data.x'}
                     },
                     {
                         name: 'y', range: 'height', type: 'ordinal', zero: true,
-                        domain: {field: 'data.param1'}
+                        domain: {field: 'data.y'}
                     }
                 ],
                 marks: [
@@ -81,13 +76,13 @@ function make_spec(data) {
                         type: 'rect',
                         properties: {
                             enter: {
-                                x: {scale: 'x', field: 'data.param2'},
-                                y: {scale: 'y', field: 'data.param1'},
+                                x: {scale: 'x', field: 'data.x'},
+                                y: {scale: 'y', field: 'data.y'},
                                 width: {scale: 'x', band: true},
                                 height: {scale: 'y', band: true}
                             },
                             update: {
-                                fill: {scale: 'fz', field: 'data.value'}
+                                fill: {scale: 'fz', field: 'data.z'}
                             }
                         }
                     }
@@ -107,26 +102,40 @@ function draw_vis(element, data_uri) {
     });
 }
 
-function update_axes() {
+function update_form() {
     // Update axes selections and disable associated sliders.
     selections['metric'] = $('select[name=metric]').val();
     var metric = metrics[selections['metric']];
 
-    if (metric.hasOwnProperty('force_axes')) {
-        selections['axes'] = metric.force_axes;
-        $('div[data-prop=value]').slider({disabled: false});
-    } else {
-        var radios = $('input:radio[data-prop=axis]');
-        var x_radios = radios.filter('[data-axis=x]');
-        var y_radios = radios.filter('[data-axis=y]');
-        var sliders = $('div[data-prop=value]');
+    var forced = metric.hasOwnProperty('force_axes');
 
-        for (var param in params) {
-            if (params.hasOwnProperty(param)) {
-                var paramsel = '[data-param=' + param + ']';
-                var x_axis = x_radios.filter(paramsel).prop('checked');
-                var y_axis = y_radios.filter(paramsel).prop('checked');
-                sliders.filter(paramsel).slider({disabled: x_axis || y_axis});
+    var radios = $('input:radio[data-prop=axis]');
+    var x_radios = radios.filter('[data-axis=x]');
+    var y_radios = radios.filter('[data-axis=y]');
+    var sliders = $('div[data-prop=value]');
+
+    console.log(selections['metric'], metric, forced);
+
+    if (forced) {
+        selections['axes'] = metric.force_axes;
+    }
+
+    var param;
+
+    for (param in params) {
+        if (params.hasOwnProperty(param)) {
+            var paramsel = '[data-param=' + param + ']';
+            var x_axis = x_radios.filter(paramsel).prop('checked');
+            var y_axis = y_radios.filter(paramsel).prop('checked');
+            var slider = sliders.filter(paramsel);
+            var input = $('input[name=' + param + ']');
+
+            input.val(slider.slider('value'));
+            slider.slider({disabled: (x_axis || y_axis) && !forced});
+
+            if (!forced) {
+                if (x_axis) selections['axes']['x'] = param;
+                if (y_axis) selections['axes']['y'] = param;
             }
         }
     }
@@ -134,11 +143,12 @@ function update_axes() {
     // Update values to be sent through form.
     for (var ax in selections['axes']) {
         if (selections['axes'].hasOwnProperty(ax)) {
-            var param = params[selections['axes'][ax]];
+            param = selections['axes'][ax];
 
-            $('input[name=axis_' + ax + '_min]').val(param.min);
-            $('input[name=axis_' + ax + '_max]').val(param.max);
+            $('input[name=axis_' + ax + '_min]').val(params[param].min);
+            $('input[name=axis_' + ax + '_max]').val(params[param].max);
             $('input[name=axis_' + ax + '_n]').val(dims[ax]);
+            $('input[name=axis_' + ax + ']').val(param);
         }
     }
 }
@@ -164,13 +174,11 @@ $(document).ready(function() {
                         step: (param.max - param.min) / 100.0,
                         value: param.init,
                         change: function(ev) {
-                            var param = $(ev.target).attr('data-param');
-                            var value = $(ev.target).slider('value');
-                            $('input[name=' + param + ']').val(value);
+                            update_form();
 
                             draw_vis(
                                 '#visualizations',
-                                '/pcolor.json?%s' + $('#params').serialize()
+                                '/pcolor.json?' + $('#params').serialize()
                             );
                         }
                     }).slider("pips", {
@@ -184,15 +192,18 @@ $(document).ready(function() {
                         'data-param': name,
                         'data-axis': axis,
                         'data-prop': 'axis',
-                        name: 'axis_' + axis,
+                        name: 'radio_axis_' + axis,
                         value: name
-                    }).click(update_axes);
+                    }).click(update_form);
                 })).css(
                     'display',
                     param.hasOwnProperty('hidden') ? 'none' : 'block'
                 );
         }))
         // Select menu for metric.
+        .append(['x', 'y'].map(function(axis) {
+            return $('<input/>', {type: 'hidden', name: 'axis_' + axis});
+        }))
         .append($('<label/>', {text: 'metric', for: 'metric'}))
         .append(
             $('<select/>', {name: 'metric', 'data-prop': 'metric'}).append(
@@ -202,6 +213,6 @@ $(document).ready(function() {
                         value: key
                     })
                 })
-            ).change(update_axes)
+            ).change(update_form)
         );
 });
