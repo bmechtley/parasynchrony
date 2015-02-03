@@ -3,11 +3,8 @@ import StringIO
 import json
 import sys
 import os
-import PIL
 
 import numpy as np
-import matplotlib.cm
-import matplotlib.colors
 
 import flask
 from lru import LRU
@@ -25,44 +22,12 @@ def index():
     return flask.render_template('index.html')
 
 
-@app.route('/image/<hhash>_<int:row>_<int:col>.png')
-def get_image(hhash, row, col):
-    print "<image> Looking for image %s (%d, %d)." % (hhash, row, col)
-
-    if hhash in datacache.keys():
-        print "<image>\tFound!"
-        img_io = StringIO.StringIO()
-        datacache[hhash]['images'][row, col].save(img_io, 'PNG')
-        img_io.seek(0)
-        return flask.send_file(img_io, mimetype='image/png')
-    else:
-        print "<image>\tNot found :("
-        flask.abort(404)
-
-
-def transfer_function(params=None, domain=None, **_):
-    sym_params = {
-        models.parasitism.symbols[k]: v for k, v in params.iteritems()
-    }
-
-    xfer = model.transfer_function(sym_params)
-
-    return dict(xfer=np.abs(np.array([
-        [
-            xfer(complex(re, im))
-            for re in domain[1]
-        ]
-        for im in domain[0]
-    ])))
-
-
 def fraction_synchrony(
-        params=None,
-        domain=None,
-        axes=None,
-        noise=None,
-        nfreqs=100,
-        **_
+    params=None,
+    axes=None,
+    noise=None,
+    nfreqs=100,
+    **_
 ):
     """
     Compute the fraction of synchrony between patches for which the host is
@@ -86,80 +51,71 @@ def fraction_synchrony(
 
     results = {
         k: np.zeros((
-            len(domain[0]),
-            len(domain[1]),
+            len(axes['y']['domain']),
+            len(axes['x']['domain']),
             len(model.vars),
             len(model.vars)
         ))
         for k in fracfuns
     }
 
-    variants = {key: dict(
-        params=dict(params.iteritems()),
-        noise=dict(noise.iteritems())
-    ) for key in ['host', 'nohost']}
+    freqs = np.linspace(0, 0.5, nfreqs)
 
-    variants['nohost']['params']['mh'] = 0
-    variants['nohost']['noise']['Shh'] = 0
+    for (i, vary), (j, varx) in itertools.product(*[
+        enumerate(np.linspace(axes[ax]['min'], axes[ax]['max'], axes[ax]['n']))
+        for ax in ['y', 'x']
+    ]):
+        correlations = dict()
 
-    for (i, var1), (j, var2) in itertools.product(
-        enumerate(domain[0]), enumerate(domain[1])
-    ):
-        for name, variant in variants.iteritems():
+        for name in ['all', 'hostonly']:
+            vparams, vnoise = dict(params.items()), dict(noise.items())
+
             for k, v in itertools.izip(
-                    [ax['param'] for ax in axes], [var1, var2]
+                [axes[ax]['param'] for ax in ['y', 'x']], [vary, varx]
             ):
-                if k in variant['params']:
-                    variant['params'][k] = v
-                if k in variant['noise']:
-                    variant['noise'][k] = v
+                if k in vparams:
+                    vparams[k] = v
+                elif k in vnoise:
+                    vnoise[k] = v
 
-            if name == 'nohost':
-                variant['params']['mh'] = 0
-                variant['noise']['Shh'] = 0
+            if name == 'hostonly':
+                vparams['mp'] = 0
+                vnoise['Spp'] = 0
+                vnoise['Sp'] = 0
 
-            sym_params = models.parasitism.sym_params(variant['params'])
+            sym_params = models.parasitism.sym_params(vparams)
 
             noisecov = np.array([
-                [variant['noise']['Sh'], variant['noise']['Shh'], 0, 0],
-                [variant['noise']['Shh'], variant['noise']['Sh'], 0, 0],
-                [0, 0, variant['noise']['Sp'], variant['noise']['Spp']],
-                [0, 0, variant['noise']['Spp'], variant['noise']['Sp']]
+                [vnoise['Sh'], vnoise['Shh'], 0, 0],
+                [vnoise['Shh'], vnoise['Sh'], 0, 0],
+                [0, 0, vnoise['Sp'], vnoise['Spp']],
+                [0, 0, vnoise['Spp'], vnoise['Sp']]
             ])
 
-            variant['spectrum'] = np.abs(np.array([model.calculate_spectrum(
+            spectrum = np.abs(np.array([model.calculate_spectrum(
                 sym_params, noisecov, freq
-            ) for freq in np.linspace(0, 0.5, nfreqs)]))
+            ) for freq in freqs]))
 
-            variant['covariance'] = model.calculate_covariance(
-                sym_params, noisecov
-            )
+            cov = model.calculate_covariance(sym_params, noisecov)
 
-            variant['normed'] = np.rollaxis(np.array([
+            # Compute normalized spectrum, i.e. correlation matrix.
+            correlations[name] = np.rollaxis(np.array([
                 [
-                    np.real(variant['spectrum'][:, row, col]) / np.sqrt(
-                        np.prod([
-                            variant['covariance'][c, c]**2 for c in [row, col]
-                        ])
-                    ) for col in range(variant['covariance'].shape[1])
-                ] for row in range(variant['covariance'].shape[0])
+                    np.divide(
+                        np.real(spectrum[:, row, col]),
+                        np.sqrt(np.prod([cov[c, c]**2 for c in [row, col]]))
+                    ) for col in range(cov.shape[1])
+                ] for row in range(cov.shape[0])
             ]), 2, 0)
 
         for key, fracfun in fracfuns.iteritems():
-            results[key][i, j, :, :] = np.log(fracfun(
-                np.divide(
-                    variants['host']['normed'] - variants['nohost']['normed'],
-                    variants['nohost']['normed']
-                ),
+            results[key][i, j, :, :] = fracfun(
+                correlations['hostonly'] / correlations['all'],
                 axis=0
-            ))
+            )
 
     return results
 
-metrics = [
-    dict(fun=transfer_function, all_axes=['im', 're']),
-    dict(fun=fraction_synchrony, no_axes=['im', 're'])
-]
 
 @app.route('/pcolor.json')
 def get_pcolor():
@@ -170,24 +126,24 @@ def get_pcolor():
             k: float(request.get(k))
             for k in ['r', 'a', 'c', 'k', 'mh', 'mp']
         },
-        axes=[
-            dict(
+        axes={
+            ax: dict(
                 param=request.get('axis_%s' % ax),
                 min=float(request.get('axis_%s_min' % ax)),
                 max=float(request.get('axis_%s_max' % ax)),
                 n=int(request.get('axis_%s_n' % ax))
             ) for ax in ['x', 'y']
-        ],
+        },
         noise={k: float(request.get(k)) for k in ['Shh', 'Sh', 'Spp', 'Sp']}
     )
 
-    axes = [ax['param'] for ax in inputs['axes']]
+    # List of parameters that are used as axes.
+    axes_params = [ax['param'] for ax in inputs['axes'].values()]
 
     # Take the axes out of the params to avoid duplicate calculations in
     # multiple hashes.
-    for ax in axes:
-        if ax in inputs['params']:
-            inputs['params'][ax] = 0
+    for ax in axes_params:
+        inputs['params'][ax] = 0
 
     # Hash the input parameters for caching calculations.
     paramhash = str(hash(json.dumps(inputs, sort_keys=True)))
@@ -198,42 +154,26 @@ def get_pcolor():
     if paramhash not in datacache.keys():
         print "<pcolor>\tComputing new."
 
-        domain = [
-            np.linspace(ax['min'], ax['max'], ax['n'])
-            for ax in inputs['axes'][::-1]
-        ]
+        for ax in inputs['axes'].values():
+            ax['domain'] = list(np.linspace(ax['min'], ax['max'], ax['n']))
 
         datacache[paramhash] = dict(
-            data=dict(
-                sum([
-                    metric['fun'](
-                        **dict(inputs.items() + [('domain', domain)])
-                    ).items()
-                    for metric in metrics
-                    if all([
-                        param in axes for param in metric.get('all_axes', [])
-                    ]) and all([
-                        param not in axes for param in metric.get('no_axes', [])
-                    ])
-                ], [])
-            ),
-            domain=domain,
+            data=fraction_synchrony(**inputs),
             inputs=inputs
         )
 
     cached = datacache[paramhash]
-    domain = cached['domain']
     shape = cached['data'][metric_name].shape
 
     jsondata = dict(
         hash=paramhash,
         data=dict(children=[
             dict(
-                var1=str(model.vars[prow]),
-                var2=str(model.vars[pcol]),
+                vary=str(model.vars[prow]),
+                varx=str(model.vars[pcol]),
                 children=[dict(
-                    x=domain[1][vcol],
-                    y=domain[0][vrow],
+                    x=cached['inputs']['axes']['x']['domain'][vcol],
+                    y=cached['inputs']['axes']['y']['domain'][vrow],
                     z=cached['data'][metric_name][vrow, vcol, prow, pcol]
                 ) for vrow, vcol in itertools.product(
                     range(shape[0]), range(shape[1])
