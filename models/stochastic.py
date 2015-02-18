@@ -16,7 +16,7 @@ class StochasticModel:
     and the dynamics are expressed as a SymPy Matrix object.
     """
 
-    # TODO: @ Peak magnitude?
+    # TODO: Peak magnitude?
 
     def __init__(self, symvars, noises, equation):
         """
@@ -48,7 +48,7 @@ class StochasticModel:
     def solve_equilibrium(self):
         """Find the [first] non-trivial equilibrium point."""
 
-        # TODO: @ This currently assumes there's one non-trivial equilibrium
+        # TODO: This currently assumes there's one non-trivial equilibrium
         # TODO:     point and that it's the second returned by SymPy's solve().
         # TODO:     That's a dangerous assumption.
 

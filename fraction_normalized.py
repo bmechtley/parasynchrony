@@ -9,18 +9,6 @@ host-to-host cospectra. It also shows a normalized cospectrum (normalized by
 covariance) and a synchrony fraction based off that normalized cospectrum.
 """
 
-# TODO: @ As approach Hopf bifurcation? Plot mean/max metrics as well as the
-# TODO:     eigenvalues and their moduli. When the eigenvalues have modulus
-# TODO:     greater than 1, this indicates a bifurcation. If they have an
-# TODO:     imaginary component, this indicates a Hopf bifurcation, because they
-# TODO:     form an eigenplane on which the system is oscillating as it
-# TODO:     bifurcates into an unstable equilibrium. It may also be valuable to
-# TODO:     do analytic analysis of the 1-patch model to see if there is a Hopf
-# TODO:     bifurcation between the two species.
-
-# TODO: @ Verify covariance vs numeric integration in another script. Already
-# TODO:     verified vs. simulation in covergence.py.
-
 import itertools
 
 import numpy as np
@@ -159,7 +147,7 @@ def plot_fraction(
         # ax[3].axhline(gain, ls='-.', **plotargs)
 
         # Draw two lines: one for fraction of maximum, one for fraction of mean.
-        # TODO: @ Should we use fraction of mean/max, or mean/max of fraction?
+        # TODO: Should we use fraction of mean/max, or mean/max of fraction?
 
         if i != 0:
             identity = lambda x: x

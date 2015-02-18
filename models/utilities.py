@@ -30,7 +30,7 @@ def solve_axatc(a, c):
     a, c = [np.matrix(m) for m in a, c]
     evals, evecs = [np.matrix(m) for m in np.linalg.eig(a)]
 
-    # TODO: @ Maybe this needs to be evals * evals.getH(), if it matters?
+    # TODO: Maybe this needs to be evals * evals.getH(), if it matters?
     phi = np.ones(evals.shape) - evals.getH() * evals
     gamma = np.linalg.inv(evecs) * c * np.linalg.inv(evecs.getH())
     x_tilde = np.multiply(1. / phi, gamma)

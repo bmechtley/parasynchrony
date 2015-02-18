@@ -396,7 +396,7 @@ def plot_errors(srcfile):
     nfftlog2s = np.log2(np.array([r['analysis']['csd']['NFFT'] for r in runs]))
 
     # Make the plot.
-    # TODO: @ This plot is pretty ugly and has misleading/confusing labels.
+    # TODO: This plot is pretty ugly and has misleading/confusing labels.
 
     plotargs = dict(
         linear=dict(color='r', ls='-', label='linear'),
@@ -578,7 +578,7 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
             )
 
             # Smooth spectral matrices for better estimate.
-            # TODO: @ I'm explicitly doing the median filter here. Probably
+            # TODO: I'm explicitly doing the median filter here. Probably
             # TODO:     better to just define multiple smoothing windows in the
             # TODO:     config dictionary . . .
 

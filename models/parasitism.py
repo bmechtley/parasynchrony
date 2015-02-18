@@ -141,7 +141,7 @@ def get_model(modelstr):
         # in the off diagonals such that hosts only migrate to other hosts
         # and parasitoids only migrate to other parasitoids.
         #
-        # TODO: @ This will NOT work, e.g. with AR1 or any non host-
+        # TODO: This will NOT work, e.g. with AR1 or any non host-
         # TODO:     parasitoid model or multispecies model. Only for models
         # TODO:     where there are one host and one parasitoid per patch,
         # TODO:     and hosts precede parasitoids in the list of state

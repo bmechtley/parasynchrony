@@ -35,7 +35,7 @@ import matplotlib.pyplot as pp
 import models
 
 # 1. Model parameters.
-# TODO: @ Maybe use pybatchdict for these.
+# TODO: Maybe use pybatchdict for these.
 model = models.parasitism.get_model("nbd(2)")
 params = np.array([
     [
@@ -82,7 +82,7 @@ for migh, migp, morh, morp in itertools.product(range(2), repeat=4):
         for v in freqs
     ]).T
 
-    # TODO: @ Magnitudes are not scaled properly. Also, to what do the non-
+    # TODO: Magnitudes are not scaled properly. Also, to what do the non-
     # TODO:     dominant eigenvalues correspond?
     eigvals, eigvecs = model.calculate_eigenvalues(sym_params)
     oscfreqs[morh, morp, migh, migp] = np.angle(eigvals) / (2 * np.pi)
