@@ -1,6 +1,7 @@
 import os
 import cPickle
 import itertools
+import collections
 import multiprocessing
 
 import numpy as np
@@ -9,6 +10,10 @@ import matplotlib.pyplot as pp
 import models
 
 model = models.parasitism.get_model('nbd(2)')
+
+
+def poolmap(pool, *args):
+    return pool.map_async(*args).get(999999)
 
 
 def fraction_synchrony(params, nfreqs=100):
@@ -30,7 +35,7 @@ def fraction_synchrony(params, nfreqs=100):
     fracfuns = dict(
         # avgfracsync=lambda n, d: np.mean(n / d, axis=0),
         # maxfracsync=lambda n, d: np.amax(n / d, axis=0),
-        fracavgsync=lambda n, d: np.mean(n, axis=0) / np.mean(d, axis=0)
+        fracavgsync=lambda n, d: np.mean(np.abs(n), axis=0) / np.mean(np.abs(d), axis=0)
         # fracmaxsync=lambda n, d: np.amax(n, axis=0) / np.amax(d, axis=0)
     )
 
@@ -75,54 +80,53 @@ def fraction_synchrony(params, nfreqs=100):
     }
 
 
-def make_products_1d(params, defaults):
-    products = []
+def process_1d(opts):
+    print opts['key']
 
-    for key in defaults.iterkeys():
-        pr = []
+    defaults = {k: v['default'] for k, v in opts['params'].iteritems()}
 
-        for val in params[key]:
-            dd = dict(defaults)
-            dd[key] = val
-            param_set = dict(num=dict(dd), den=dict(dd))
-            param_set['num'].update(dict(Spp=0, mp=0))
+    return opts['key'], [
+        fraction_synchrony(dict(
+            num=dict_merge(defaults, {opts['key']: val, 'Spp': 0, 'mp': 0}),
+            den=dict_merge(defaults, {opts['key']: val})
+        )) for val in opts['params'][opts['key']]['range']
+    ]
+    
 
-            pr.append(fraction_synchrony(param_set))
+def make_products_1d(params=None, pool=None, **_):
+    return collections.OrderedDict(poolmap(pool, process_1d, [
+        dict(key=key, params=params) for key in params.iterkeys()
+    ]))
 
-        products.append(pr)
 
-    return products
+def plot_products_1d(params=None, products=None, filename=None):
+    fig = pp.figure(figsize=(10, 15))
+    fig.suptitle('Frac. avg. sync. only para moran/dispersal / all effects')
 
+    n = len(params)
 
-def plot_products_1d(keys, labels, params, products, filename):
-    pp.figure(figsize=(10, 15))
-
-    for i, (k, u) in enumerate(zip(keys, products)):
-        pp.subplot(len(keys), 1, i+1)
-        pp.xlabel(labels[i])
+    for i, (k, u) in enumerate(products.iteritems()):
         host = [uu['fracavgsync'][0, 1] for uu in u]
-        para = [uu['fracavgsync'][2, 3] for uu in u]
 
-        pp.plot(params[k], host, label='host')
-        pp.plot(params[k], para, label='para')
-        pp.ylim(0, max(max(host), max(para)) + 1)
+        pp.subplot(n, 1, i+1)
+        pp.xlabel('$%s$ (%s)' % (
+            models.parasitism.symbols[k],
+            models.parasitism.labels[k]
+        ))
+        pp.plot(params[k]['range'], host, label='host')
+        pp.axvline(params[k]['default'], ls=':', color='r')
+        pp.axhline(
+            np.interp(params[k]['default'], params[k]['range'], host),
+            ls=':', color='r'
+        )
+        pp.ylim(min(host), max(host))
+        pp.xlim(min(params[k]['range']), max(params[k]['range']))
 
         if i == 0:
             pp.legend()
-            pp.title('Frac. avg. sync. only para moran/dispersal / all effects')
 
-    pp.subplots_adjust(hspace=0.75)
+    pp.subplots_adjust(hspace=1.25)
     pp.savefig(filename)
-
-
-def helper_2d(defaults=None, params=None, k1=None, k2=None, i1=None, i2=None):
-    dd = dict(defaults)
-    dd[k1] = params[k1][i1]
-    dd[k2] = params[k2][i2]
-    param_set = dict(num=dict(dd), den=dict(dd))
-    param_set['num'].update(dict(Spp=0, mp=0))
-
-    return fraction_synchrony(param_set)
 
 
 def dict_merge(a, b):
@@ -131,141 +135,144 @@ def dict_merge(a, b):
     return c
 
 
-def mapped(opts):
-    print opts['k1'], opts['k2']
+def process_2d(opts):
+    defaults = {k: v['default'] for k, v in opts['params'].iteritems}
+    range1 = opts['params'][opts['k1']]['range']
+    range2 = opts['params'][opts['k2']]['range']
+    k1, k2 = opts['k1'], opts['k2']
+    res = opts['res']
+
+    print k1, k2, res
 
     return [
         [
             fraction_synchrony(dict(
-                num=dict_merge(opts['defaults'], {
-                    opts['k1']: opts['params'][opts['k1']][i1],
-                    opts['k2']: opts['params'][opts['k2']][i2],
+                num=dict_merge(defaults, {
+                    k1: range1[i1], k2: range2[i2],
                     'Spp': 0, 'mp': 0
                 }),
-                den=dict_merge(opts['defaults'], {
-                    opts['k1']: opts['params'][opts['k1']][i1],
-                    opts['k2']: opts['params'][opts['k2']][i2]
-                })
+                den=dict_merge(defaults, {k1: range1[i1], k2: range2[i2]})
             ))
-            for i2 in range(opts['res'])
-        ] for i1 in range(opts['res'])
+            for i2 in range(res)
+        ] for i1 in range(res)
     ]
 
 
-def make_products_2d(keys, params, defaults, res=40):
-    keyproduct = itertools.combinations_with_replacement(keys, 2)
+def make_products_2d(params=None, pool=None, res=40):
+    keyproduct = list(itertools.combinations_with_replacement(params.keys(), 2))
 
-    pool = multiprocessing.Pool(processes=os.environ.get(
-        'POOLPROCESSES', multiprocessing.cpu_count() - 1
-    ))
-
-    products = pool.map(mapped, [
-        dict(
-            params=params,
-            defaults=defaults,
-            k1=k1,
-            k2=k2,
-            res=res
-        ) for k1, k2 in keyproduct
+    products = poolmap(pool, process_2d, [
+        dict(params=params, k1=k1, k2=k2, res=res) for k1, k2 in keyproduct
     ])
 
-    products = [
+    return [
         [
-            next(
+            [
                 x for i, x in enumerate(products)
-                if keyproduct[i][0] == k1
-                and keyproduct[i][1] == k2
-            )
-            for k2 in keys
-        ] for k1 in keys
+                if (keyproduct[i][0] == k1 and keyproduct[i][1] == k2)
+                or (keyproduct[i][0] == k2 and keyproduct[i][1] == k1)
+            ][0]
+            for k2 in params.iterkeys()
+        ] for k1 in params.iterkeys()
     ]
 
-    return products
 
+def plot_products_2d(params=None, products=None, filename=None):
+    fig = pp.figure(figsize=(30, 30))
+    fig.suptitle('Frac. avg. sync. only para moran/dispersal / all effects')
+    n = len(params)
 
-def plot_products_2d(keys, labels, params, products, filename):
-    pp.figure(figsize=(10, 15))
+    for i in range(n):
+        for j in range(i, n):
+            ki, kj = params.keys()[i], params.keys()[j]
+            pp.subplot(n, n, n * n - i * n - j)
 
-    lk = len(keys)
-    for i, (i1, k1), (i2, k2) in enumerate(
-            itertools.combinations_with_replacement(enumerate(keys), 2)
-    ):
-        pp.subplot(lk, lk, i1 * lk + i2 + 1)
+            if i == 0:
+                pp.xlabel('$%s$ (%s)' % (
+                    models.parasitism.symbols[kj],
+                    models.parasitism.labels[kj]
+                ))
 
-        if i1 == lk - 1:
-            pp.xlabel(labels[i2])
+            if j == n - 1:
+                pp.ylabel('$%s$ (%s)' % (
+                    models.parasitism.symbols[ki],
+                    models.parasitism.labels[ki]
+                ))
 
-        if i2 == 0:
-            pp.ylabel(labels[i1])
+            host = np.array([
+                [u3['fracavgsync'][0, 1] for u3 in u2]
+                for u2 in products[i][j]
+            ])
 
-        host = [
-            [uuu['fracavgsync'][0, 1] for uuu in uu] for uu in products[i1][i2]
-        ]
-        # para = [[uuu['fracavgsync'][2, 3] for uuu in uu] for uu in u]
+            pp.imshow(
+                host,
+                label='host', cmap='rainbow', vmin=0, aspect='auto',
+                extent=(
+                    params[ki]['range'][0], params[ki]['range'][-1],
+                    params[kj]['range'][0], params[kj]['range'][-1]
+                )
+            )
 
-        pp.imshow(params[k1], params[k2], host, label='host')
-        # pp.imshow(params[k1], params[k2], para, label='para')
+            pp.axvline(params[kj]['default'], color='pink', ls=':', lw=2)
+            pp.axhline(params[ki]['default'], color='pink', ls=':', lw=2)
 
-        # pp.ylim(0, max(max(host), max(para)) + 1)
+            pp.xlim(params[kj]['range'][0], params[kj]['range'][-1])
+            pp.ylim(params[ki]['range'][0], params[ki]['range'][-1])
 
-        if i == 0:
-            pp.title('Frac. avg. sync. only para moran/dispersal / all effects')
+            pp.colorbar()
 
     pp.subplots_adjust(hspace=0.75)
     pp.savefig(filename)
 
 
 def main():
-    res = 50
+    res = 100
 
-    defaults = dict(
-        r=3.0,
-        a=0.5,
-        c=1.2,
-        k=0.9,
-        mh=0.05,
-        mp=0.05,
-        Sh=1E-2,
-        Shh=1E-4,
-        Sp=1E-2,
-        Spp=1E-4
+    params = collections.OrderedDict(
+        r=dict(default=2.0, range=(1.1, 4.0)),
+        a=dict(default=1.0, range=(0.1, 2.0)),
+        c=dict(default=1.0, range=(0.1, 2.0)),
+        k=dict(default=0.5, range=(0.1, 0.9)),
+        mh=dict(default=0.25, range=(0.125, 0.5)),
+        mp=dict(default=0.25, range=(0.125, 0.5)),
+        Sh=dict(default=0.5, range=(0.125, 1.0)),
+        Shh=dict(default=0.25, range=(0.125, 1.0)),
+        Sp=dict(default=0.5, range=(0.125, 1.0)),
+        Spp=dict(default=0.25, range=(0.125, 1.0))
     )
 
-    params = dict(
-        r=np.linspace(1.1, 10, res),  # r
-        a=np.linspace(0.1, 10, res),  # a
-        c=np.linspace(0.1, 10, res),  # c
-        k=np.linspace(0.1, 0.9, res),  # k - stable iff < 1
-        mh=np.linspace(0, 0.5, res),  # mh
-        mp=np.linspace(0, 0.5, res),  # mp
-        Sh=np.linspace(0, 1.0, res),  # Sh
-        Shh=np.linspace(0, 1.0, res),  # Shh
-        Sp=np.linspace(0, 1.0, res),  # Sp
-        Spp=np.linspace(0, 1.0, res)  # Spp
+    for p in params.itervalues():
+        p['range'] = np.linspace(p['range'][0], p['range'][1], res)
+
+    dims = int(os.environ.get('DIMS', 1))
+
+    pool = multiprocessing.Pool(
+        processes=os.environ.get('POOLCPUS', multiprocessing.cpu_count() - 1)
     )
 
-    keys = ['r', 'a', 'c', 'k', 'mh', 'mp', 'Sh', 'Sp', 'Shh', 'Spp']
-    labels = [
-        '$\lambda$ (host reproduction rate)',
-        'a (para attack range)',
-        'c (# eggs per parasitized host)',
-        'k (host clumping)',
-        r'$\mu_H$ (host migration)',
-        r'$\mu_P$ (para migration)',
-        r'$\Sigma_{H}$ (host intra-patch env. variance)',
-        r'$\Sigma_{P}$ (para intra-patch env. variance)',
-        r'$\Sigma_{HH}$ (host inter-patch env. covariance)',
-        r'$\Sigma_{PP}$ (para inter-patch env. covariance)'
-    ]
+    plotfun = plot_products_1d if dims is 1 else plot_products_2d
+    makefun = make_products_1d if dims is 1 else make_products_2d
 
-    if not os.path.exists('results.pickle'):
-        products = make_products_2d(keys, params, defaults, res)
-        cPickle.dump(products, open('result.pickle', 'w'))
+    cachepath = 'cache/fraction-host-%d.pickle' % dims
+    plotpath = 'plots/fraction-host-%d.png' % dims
+
+    for path in [cachepath, plotpath]:
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+
+    if not os.path.exists(cachepath):
+        products = makefun(
+            params=params,
+            pool=pool,
+            res=res
+        )
     else:
-        products = cPickle.load(open('result.pickle'))
+        products = cPickle.load(open(cachepath))
 
-    plot_products_2d(
-        keys, labels, params, products, 'fracsync-host.pdf'
+    plotfun(
+        params=params,
+        products=products,
+        filename=plotpath
     )
 
 if __name__ == '__main__':
