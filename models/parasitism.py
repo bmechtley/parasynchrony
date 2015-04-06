@@ -32,7 +32,29 @@ symbols = dict(
     ),
     alpha=sympy.Symbol(r'\alpha'),
     x=sympy.Symbol('x'),
-    e=sympy.Symbol(r'\epsilon')
+    e=sympy.Symbol(r'\epsilon'),
+    Sh=sympy.Symbol(r'\Sigma_{H}'),
+    Shh=sympy.Symbol(r'\Sigma_{HH}'),
+    Sp=sympy.Symbol(r'\Sigma_{P}'),
+    Spp=sympy.Symbol(r'\Sigma_{PP}')
+)
+
+labels = dict(
+    h=['host population in patch %d' % (i + 1) for i in range(3)],
+    p=['parasitoid population in patch %d' % (i + 1) for i in range(3)],
+    eh=['env. noise on host in patch %d' % (i + 1) for i in range(3)],
+    ep=['env. noise on host in patch %d' % (i + 1) for i in range(3)],
+    e='environmental noise',
+    r='host reproduction rate',
+    a='parasitoid attack range',
+    c='eggs / parasitized host',
+    k='host clumping',
+    mh='host migration',
+    mp='parasitoid migration',
+    Sh='host env. var.',
+    Sp='parasitoid env. var.',
+    Shh='host env. cov.',
+    Spp='parasitoid env. cov.'
 )
 
 
