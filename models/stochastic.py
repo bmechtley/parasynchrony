@@ -152,17 +152,7 @@ class StochasticModel:
         :return (np.ndarray, np.ndarray): lists of zeros and poles.
         """
         num, den = scipy.signal.ss2tf(*self.state_space(params))
-
-        # print 'num', num
-        # print 'den', den
-
         zpks = [scipy.signal.tf2zpk(n, den) for n in num]
-
-        # for i in range(len(zpks)):
-        #    print 'zpks %d' % i
-        #    print '\tz %d' % i, zpks[i][0]
-        #    print '\tp %d' % i, zpks[i][1]
-        #    print '\tk %d' % i, zpks[i][2]
 
         return zpks
 
@@ -220,18 +210,10 @@ class StochasticModel:
 
         cached = self.get_cached_matrices(params)
 
-        # Mu is the spectral component.
         mu = np.exp(-2j * np.pi * v)
-
-        if cached['A'].shape[0] < 2:
-            r1 = np.array([(1 - mu * cached['A'][0, 0])**-1])
-            r1.reshape((1, 1))
-        else:
-            r1 = np.linalg.inv(
-                np.identity(len(cached['A'])) - mu * cached['A']
-            )
-
-        r = np.dot(r1, cached['B'])
+        a, b = cached['A'], cached['B']
+        n = len(a)
+        r = np.multiply(np.linalg.inv(np.eye(n) * mu - a), b)
 
         return np.dot(np.dot(r,  noise), np.conj(r.T))
 
