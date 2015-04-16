@@ -1,10 +1,40 @@
+"""
+fraction_host.py
+2015 Brandon Mechtley
+Reuman Lab, Kansas Biological Survey
+
+Plot fraction of synchrony in the host that is a result of host synchronizing
+effects (migration, Moran). Fraction of synchrony in this case is defined as
+the Pearson correlation coefficient between the two host populations in either
+patch without any parasitoid synchronizing influences (i.e. Spp=0, mp=0) divided
+by the correlation between the two hosts with all synchronizing influences.
+
+TODO: Change color scheme so the curve < 1 is easy to grasp (i.e. is it
+TODO:   logarithmic? - perhaps use banding) and values > 1 are still
+TODO:   distinguishable (e.g. fade to white). Put all plots on the same
+TODO:   cmap/norm.
+ope
+TODO: Run at higher resolutions.
+TODO: Identify interesting combinations/regions.
+TODO: Try to find a reasonable bounding box over which to average these things.
+
+TODO: Run with origin within weird k/r / k/mp region.
+"""
+
 import os
+import json
 import cPickle
-import itertools
+import argparse
+
+from itertools import combinations_with_replacement, izip, chain
+
 import collections
 import multiprocessing
 
 import numpy as np
+import scipy.stats
+import matplotlib.cm
+import matplotlib.colors
 import matplotlib.pyplot as pp
 
 import models
@@ -13,6 +43,14 @@ model = models.parasitism.get_model('nbd(2)')
 
 
 def poolmap(pool, *args):
+    """
+    Simple helper to make a parallel processing pool respond to
+    KeyboardInterrupt.
+    :param pool (multiprocessing.Pool): the pool.
+    :param args: positional arguments for pool.map_async(...)
+    :return (list): mapped results.
+    """
+
     return pool.map_async(*args).get(999999)
 
 
@@ -33,21 +71,22 @@ def fraction_synchrony(params, nfreqs=100):
     """
 
     fracfuns = dict(
-        # avgfracsync=lambda n, d: np.mean(n / d, axis=0),
-        # maxfracsync=lambda n, d: np.amax(n / d, axis=0),
-        fracavgsync=lambda n, d: np.mean(np.abs(n), axis=0) / np.mean(np.abs(d), axis=0)
-        # fracmaxsync=lambda n, d: np.amax(n, axis=0) / np.amax(d, axis=0)
+        fracsync=lambda n, d: np.divide(
+            np.mean(np.abs(n), axis=0), np.mean(np.abs(d), axis=0)
+        ),
+        corrnum=lambda n, d: np.mean(np.abs(n), axis=0),
+        corrden=lambda n, d: np.mean(np.abs(d), axis=0)
     )
 
     freqs = np.linspace(0, 0.5, nfreqs)
-    corr = dict()
+
+    corr, cov = dict(), dict()
 
     for name in ['num', 'den']:
-        newparams = dict(params[name])
-        del newparams['Spp']
-        del newparams['Sp']
-        del newparams['Sh']
-        del newparams['Shh']
+        newparams = {k: v for k, v in params[name].iteritems() if k not in [
+            'Spp', 'Sp', 'Sh', 'Shh'
+        ]}
+
         sym_params = models.parasitism.sym_params(newparams)
 
         noisecov = np.array([
@@ -58,181 +97,302 @@ def fraction_synchrony(params, nfreqs=100):
         ])
 
         spectrum = np.abs(np.array([
-            model.calculate_spectrum(sym_params, noisecov, freq)
-            for freq in freqs
+            model.calculate_spectrum(sym_params, noisecov, f) for f in freqs
         ]))
 
-        cov = model.calculate_covariance(sym_params, noisecov)
+        cov[name] = model.calculate_covariance(sym_params, noisecov)
 
         # Compute normalized spectrum, i.e. correlation matrix.
         corr[name] = np.rollaxis(np.array([
             [
                 np.divide(
-                    np.real(spectrum[:, row, col]),
-                    np.sqrt(np.prod([cov[c, c]**2 for c in [row, col]]))
-                ) for col in range(cov.shape[1])
-            ] for row in range(cov.shape[0])
+                    np.abs(spectrum[:, row, col]),
+                    np.sqrt(np.prod([
+                        cov[name][pop, pop]**2 for pop in [row, col]
+                    ]))
+                ) for col in range(cov[name].shape[1])
+            ] for row in range(cov[name].shape[0])
         ]), 2, 0)
 
-    return {
+    results = {
         k: fracfun(corr['num'], corr['den'])
         for k, fracfun in fracfuns.iteritems()
     }
 
+    # results['correlations'] = corr
+    # results['covariances'] = cov
 
-def process_1d(opts):
-    print opts['key']
-
-    defaults = {k: v['default'] for k, v in opts['params'].iteritems()}
-
-    return opts['key'], [
-        fraction_synchrony(dict(
-            num=dict_merge(defaults, {opts['key']: val, 'Spp': 0, 'mp': 0}),
-            den=dict_merge(defaults, {opts['key']: val})
-        )) for val in opts['params'][opts['key']]['range']
-    ]
-    
-
-def make_products_1d(params=None, pool=None, **_):
-    return collections.OrderedDict(poolmap(pool, process_1d, [
-        dict(key=key, params=params) for key in params.iterkeys()
-    ]))
-
-
-def plot_products_1d(params=None, products=None, filename=None):
-    fig = pp.figure(figsize=(10, 15))
-    fig.suptitle('Frac. avg. sync. only para moran/dispersal / all effects')
-
-    n = len(params)
-
-    for i, (k, u) in enumerate(products.iteritems()):
-        host = [uu['fracavgsync'][0, 1] for uu in u]
-
-        pp.subplot(n, 1, i+1)
-        pp.xlabel('$%s$ (%s)' % (
-            models.parasitism.symbols[k],
-            models.parasitism.labels[k]
-        ))
-        pp.plot(params[k]['range'], host, label='host')
-        pp.axvline(params[k]['default'], ls=':', color='r')
-        pp.axhline(
-            np.interp(params[k]['default'], params[k]['range'], host),
-            ls=':', color='r'
-        )
-        pp.ylim(min(host), max(host))
-        pp.xlim(min(params[k]['range']), max(params[k]['range']))
-
-        if i == 0:
-            pp.legend()
-
-    pp.subplots_adjust(hspace=1.25)
-    pp.savefig(filename)
+    return results
 
 
 def dict_merge(a, b):
+    """
+    Merge two dictionaries, preferring the values from the second in case of
+    collision.
+
+    :param a: first dictionary
+    :param b: second dictionary
+    :return: new dictionary containing keys and values from both dictionaries.
+    """
+
     c = a.copy()
     c.update(b)
     return c
 
 
-def process_2d(opts):
-    defaults = {k: v['default'] for k, v in opts['params'].iteritems}
-    range1 = opts['params'][opts['k1']]['range']
-    range2 = opts['params'][opts['k2']]['range']
+def process_products(opts):
+    """
+    Parallel worker for computing fraction of average synchrony. Used by
+    make_products.
+
+    :param opts (dict): dictionary of input parameters, including keys:
+        params (dict): parameter dictionary of the form
+            {name: {default: default, range: (low, high), res: resolution}.
+        k1 (str): Y parameter name.
+        k2 (str): X parameter name.
+    :return: (R1, R2) dimensional list (not array) of dictionaries where each
+        key is a different synchrony metric, e.g. fracavgsync. See
+        fraction_synchrony for more info.
+    """
+
+    varyingkeys = [k for k in opts['params'] if opts['params'][k]['res'] > 1]
+    defaults = {k: v['default'] for k, v in opts['params'].iteritems()}
     k1, k2 = opts['k1'], opts['k2']
-    res = opts['res']
+    r1, r2 = [opts['params'][k]['range'] for k in [k1, k2]]
 
-    print k1, k2, res
+    keycombos = list(combinations_with_replacement(varyingkeys, 2))
+    strargs = (keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2)
+    print 'Processing %d / %d (%s, %s).' % strargs
 
-    return [
-        [
-            fraction_synchrony(dict(
-                num=dict_merge(defaults, {
-                    k1: range1[i1], k2: range2[i2],
-                    'Spp': 0, 'mp': 0
-                }),
-                den=dict_merge(defaults, {k1: range1[i1], k2: range2[i2]})
-            ))
-            for i2 in range(res)
-        ] for i1 in range(res)
-    ]
+    fracsync = lambda a, b: fraction_synchrony(dict(
+        num=dict_merge(defaults, {k1: a, k2: b, 'Spp': 0, 'mp': 0}),
+        den=dict_merge(defaults, {k1: a, k2: b})
+    ))
+
+    if k1 != k2:
+        result = [[fracsync(v1, v2) for v2 in r2] for v1 in r1]
+        result = {
+            k: np.array([
+                [
+                    cell[k] for cell in row
+                ] for row in result
+            ])
+            for k in result[0][0].keys()
+        }
+    else:
+        result = [fracsync(v1, v1) for v1 in r1]
+        result = {
+            k: np.array([cell[k] for cell in result])
+            for k in result[0].keys()
+        }
+
+    print '\t\t\t\t\tCompleted %d / %d (%s, %s).' % strargs
+    return result
 
 
-def make_products_2d(params=None, pool=None, res=40):
-    keyproduct = list(itertools.combinations_with_replacement(params.keys(), 2))
+def make_products(params=None, pool=None):
+    """
+    Compute fraction of synchrony metrics across combinations of values for each
+    pair of model parameters.
 
-    products = poolmap(pool, process_2d, [
-        dict(params=params, k1=k1, k2=k2, res=res) for k1, k2 in keyproduct
+    :param params (dict): Parameter dictionary, of the form
+        {name: {default: default, range: (low, high), res: resolution}.
+    :param pool (multiprocessing.Pool): pool used for parallel computation.
+    :return: (P, P, R1, R2) dimensional list (not array) of dictionaries where
+        each key is a different synchrony metric, e.g. fracavgsync. See
+        fraction_synchrony for more info.
+    """
+
+    varyingkeys = [k for k in params if params[k]['res'] > 1]
+    print 'Varying keys:', varyingkeys
+
+    keyproduct = list(combinations_with_replacement(varyingkeys, 2))
+
+    # Returns an array of dictionaries, each containing a two-dimensional array
+    # with the different metrics returned by fraction_synchrony across the
+    # combination of each pair of varying parameters.
+    products = poolmap(pool, process_products, [
+        dict(params=params, k1=k1, k2=k2) for k1, k2 in keyproduct
     ])
 
-    return [
-        [
+    # Restructure so we have a dictionary with fraction_synchrony metrics as
+    # keys and lists of two-dimensional arrays of their values across the
+    # combination of each pair of varying parameters.
+    products = {k: [p[k] for p in products] for k in products[0].keys()}
+
+    # Finally, return a dict such that each fraction_synchrony metric key is
+    # associated with a (K, K, N, N) array, where K is the number of varying
+    # keys and N is the parameter resolution.
+    return {
+        k: [
             [
-                x for i, x in enumerate(products)
-                if (keyproduct[i][0] == k1 and keyproduct[i][1] == k2)
-                or (keyproduct[i][0] == k2 and keyproduct[i][1] == k1)
-            ][0]
-            for k2 in params.iterkeys()
-        ] for k1 in params.iterkeys()
-    ]
+                [
+                    x for i, x in enumerate(v)
+                    if (keyproduct[i][0] == k1 and keyproduct[i][1] == k2)
+                    or (keyproduct[i][0] == k2 and keyproduct[i][1] == k1)
+                ][0]
+                for k2 in varyingkeys
+            ] for k1 in varyingkeys
+        ]
+        for k, v in products.iteritems()
+    }
 
 
-def plot_products_2d(params=None, products=None, filename=None):
-    fig = pp.figure(figsize=(30, 30))
-    fig.suptitle('Frac. avg. sync. only para moran/dispersal / all effects')
-    n = len(params)
+def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
+    """
+    Plot fraction of host synchrony due to host effects across combinations of
+    values for each pair of model parameters.
 
-    for i in range(n):
-        for j in range(i, n):
-            ki, kj = params.keys()[i], params.keys()[j]
-            pp.subplot(n, n, n * n - i * n - j)
+    :param params (dict): Parameter dictionary, of the form
+        {name: {default: default, range: (low, high), res: resolution}. Should
+        be the same dictionary used to produce the products parameter.
+    :param products (list): (P, P, R1, R2) dimensional list (not array)
+        containing dictionaries where each key is a different synchrony metric,
+        e.g. fracavgsync. See fraction_synchrony for more info.
+    :param filename (str): Output filename for plot.
+    """
 
-            if i == 0:
-                pp.xlabel('$%s$ (%s)' % (
-                    models.parasitism.symbols[kj],
-                    models.parasitism.labels[kj]
-                ))
+    # Get fraction of host synchrony from host effects for all combinations
+    # parameters that vary over more than one value (res > 1).
+    vkeys = [k for k in params if params[k]['res'] > 1]
+    n = len(vkeys)
 
-            if j == n - 1:
-                pp.ylabel('$%s$ (%s)' % (
-                    models.parasitism.symbols[ki],
-                    models.parasitism.labels[ki]
-                ))
+    # Get minimum and maximum values.
+    allvals = np.concatenate([
+        np.concatenate([
+            metric[i][j].flatten() for j in range(len(metric[i]))
+        ]).flatten() for i in range(len(metric))
+    ]).flatten()
 
-            host = np.array([
-                [u3['fracavgsync'][0, 1] for u3 in u2]
-                for u2 in products[i][j]
-            ])
+    minval, maxval = np.amin(allvals), np.amax(allvals)
+    valrange = maxval - minval
 
-            pp.imshow(
-                host,
-                label='host', cmap='rainbow', vmin=0, aspect='auto',
-                extent=(
-                    params[ki]['range'][0], params[ki]['range'][-1],
-                    params[kj]['range'][0], params[kj]['range'][-1]
-                )
+    # Make a new colormap with one colormap for values 0-1.0 fraction of sync.
+    # and another colormap for values 1.0+ fraction of sync.
+    ncolors = 1024
+    cmap_low = matplotlib.cm.get_cmap('gnuplot2')
+    cmap_high = matplotlib.cm.get_cmap('Greens_r')
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+        'newcmap', [(i, (c[0], c[1], c[2], c[3])) for i, c in izip(
+            chain(
+                np.linspace(0, 1 / valrange, ncolors, endpoint=False),
+                np.linspace(1 / valrange, 1, ncolors),
+            ),
+            chain(
+                [cmap_low(x) for x in np.linspace(0, 1, ncolors)],
+                [cmap_high(x) for x in np.linspace(1, .5, ncolors)]
             )
+        )]
+    )
 
-            pp.axvline(params[kj]['default'], color='pink', ls=':', lw=2)
-            pp.axhline(params[ki]['default'], color='pink', ls=':', lw=2)
+    fig, subplots = pp.subplots(n, n, figsize=(5 * n + 5, 3.75 * n + 5))
+    fig.suptitle('Frac. avg. sync. no para moran/dispersal / all effects')
 
-            pp.xlim(params[kj]['range'][0], params[kj]['range'][-1])
-            pp.ylim(params[ki]['range'][0], params[ki]['range'][-1])
+    # i is row (y axis), j is column (x axis)
+    for (i, ki, si, li), (j, kj, sj, lj) in combinations_with_replacement(
+        zip(
+            range(len(vkeys)),
+            vkeys,
+            [models.parasitism.symbols[k] for k in vkeys],
+            [models.parasitism.labels[k] for k in vkeys]
+        ),
+        2
+    ):
+            ri, rj = params[ki]['range'], params[kj]['range']
+            di, dj = params[ki]['default'], params[kj]['default']
 
-            pp.colorbar()
+            # If there is only one varying key, subplots(1, 1, ...) returns
+            # just the first axes rather than a multidimensional list.
+            try:
+                ax = subplots[n - i - 1][n - j - 1]
+            except TypeError:
+                ax = subplots
 
-    pp.subplots_adjust(hspace=0.75)
-    pp.savefig(filename)
+            if i != j:
+                subplots[i][j].set_axis_off()
+
+                # 1. Plot fraction of average synchrony.
+                imshow = ax.imshow(
+                    metric[i][j],
+                    vmin=minval,
+                    vmax=maxval,
+                    cmap=cmap,
+                    label='host',
+                    aspect='auto',
+                    extent=(rj[0], rj[-1], ri[-1], ri[0])
+                )
+
+                flat = metric[i][j].flatten()
+                percs = [25, 50, 75]
+                percvals = [np.percentile(flat, q) for q in percs]
+
+                # 2. Plot contours.
+                contour = ax.contour(
+                    rj, ri, metric[i][j],
+                    colors=['w', 'w', 'w'],
+                    levels=list(percvals),
+                    linestyles=['dotted', 'dashed', 'solid']
+                )
+
+                # 3. Axes.
+                ax.set_xlabel('$%s$ (%s)' % (sj, lj))
+                ax.set_ylabel('$%s$ (%s)' % (si, li))
+                ax.axvline(dj, color='pink', ls=':', lw=2)
+                ax.axhline(di, color='pink', ls=':', lw=2)
+                ax.set_xlim(rj[0], rj[-1])
+                ax.set_ylim(ri[0], ri[-1])
+                ax.tick_params(axis='both', which='major', labelsize=8)
+
+                # 4. Labels.
+                colorbar = pp.colorbar(imshow, ax=ax)
+                colorbar.ax.tick_params(labelsize=8)
+                ax.clabel(contour, inline=1, fontsize=8)
+            else:
+                ax.plot(ri, metric[i][j], label=metricname)
+
+                lineprops = dict(color='r', ls=':')
+                ax.axvline(di, label='origin', **lineprops)
+                ax.axhline(np.interp(di, ri, metric[i][j]), **lineprops)
+
+                ax.set_xlabel('$%s$ (%s)' % (si, li))
+                ax.set_ylabel(metricname)
+                ax.set_xlim(min(ri), max(ri))
+                ax.set_ylim(min(metric[i][j]), max(metric[i][j]))
+                ax.tick_params(axis='both', which='major', labelsize=8)
+                ax.legend()
+
+    pp.subplots_adjust(
+        hspace=0.4, wspace=0.4,
+        left=0.05, bottom=0.05,
+        top=0.95, right=0.95
+    )
+
+    pp.savefig(filename, dpi=240)
 
 
 def main():
-    res = 100
+    parser = argparse.ArgumentParser(
+        description='Fraction of synchrony in host due to host effects.'
+    )
+    parser.add_argument(
+        '-np', '--poolcpus',
+        type=int,
+        default=multiprocessing.cpu_count() - 1,
+        help='how many processes to run concurrently'
+    )
+    parser.add_argument(
+        '-r', '--resolution',
+        type=int,
+        default=10,
+        help='number of steps in each dimension'
+    )
+    args = parser.parse_args()
 
     params = collections.OrderedDict(
-        r=dict(default=2.0, range=(1.1, 4.0)),
-        a=dict(default=1.0, range=(0.1, 2.0)),
-        c=dict(default=1.0, range=(0.1, 2.0)),
-        k=dict(default=0.5, range=(0.1, 0.9)),
+        r=dict(default=2.0, range=(1.1, 4.0), res=1),
+        a=dict(default=1.0, res=1),
+        c=dict(default=1.0, res=1),
+        k=dict(default=0.16, range=(0.1, 0.25)),
         mh=dict(default=0.25, range=(0.125, 0.5)),
         mp=dict(default=0.25, range=(0.125, 0.5)),
         Sh=dict(default=0.5, range=(0.125, 1.0)),
@@ -241,39 +401,61 @@ def main():
         Spp=dict(default=0.25, range=(0.125, 1.0))
     )
 
+    # params = collections.OrderedDict(
+    #     r=dict(default=2, res=1),
+    #     a=dict(default=1, res=1),
+    #     c=dict(default=1, res=1),
+    #     k=dict(default=.5, range=(.1, .25)),
+    #     mh=dict(default=.25, res=1),
+    #     mp=dict(default=.25, res=1),
+    #     Sh=dict(default=.5, res=1),
+    #     Shh=dict(default=.25, res=1),
+    #     Sp=dict(default=.5, res=1),
+    #     Spp=dict(default=.25, res=1)
+    # )
+
+    phash = hash(json.dumps(dict_merge(params, vars(args))))
+
     for p in params.itervalues():
-        p['range'] = np.linspace(p['range'][0], p['range'][1], res)
+        p.setdefault('res', args.resolution)
+        p.setdefault('range', (p['default'], p['default']))
+        p['range'] = np.linspace(p['range'][0], p['range'][1], p['res'])
 
-    dims = int(os.environ.get('DIMS', 1))
+    pool = multiprocessing.Pool(processes=args.poolcpus)
 
-    pool = multiprocessing.Pool(
-        processes=os.environ.get('POOLCPUS', multiprocessing.cpu_count() - 1)
-    )
+    cachepath = 'cache/fraction-host-%d-%s.pickle' % (args.resolution, phash)
+    plotprefix = 'plots/fraction-host-%d-%s' % (args.resolution, phash)
 
-    plotfun = plot_products_1d if dims is 1 else plot_products_2d
-    makefun = make_products_1d if dims is 1 else make_products_2d
-
-    cachepath = 'cache/fraction-host-%d.pickle' % dims
-    plotpath = 'plots/fraction-host-%d.png' % dims
-
-    for path in [cachepath, plotpath]:
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
+    for dirname in [os.path.dirname(path) for path in [cachepath, plotprefix]]:
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
 
     if not os.path.exists(cachepath):
-        products = makefun(
-            params=params,
-            pool=pool,
-            res=res
-        )
+        print 'Computing %s with %d processes.' % (cachepath, args.poolcpus)
+        products = make_products(params=params, pool=pool)
+
+        print 'Writing %s.' % cachepath
+        cPickle.dump(products, open(cachepath, 'w'))
     else:
+        print 'Loading %s.' % cachepath
         products = cPickle.load(open(cachepath))
 
-    plotfun(
-        params=params,
-        products=products,
-        filename=plotpath
-    )
+    metrics = {
+        k: [
+            [
+                pj[:, :, 0, 1]
+                if pj.ndim == 4
+                else pj[:, 0, 1]
+                for pj in pi
+            ] for pi in v
+        ]
+        for k, v in products.iteritems()
+    }
+
+    for k, v in metrics.iteritems():
+        plotpath = '%s-%s.png' % (plotprefix, k)
+        print 'Plotting %s.' % plotpath
+        plot_fracsync(params, v, plotpath, k)
 
 if __name__ == '__main__':
     main()
