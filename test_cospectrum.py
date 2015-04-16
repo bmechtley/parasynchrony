@@ -123,20 +123,18 @@ def plot_series(picklefile):
     """
 
     series = cPickle.load(open(picklefile, 'r'))
+    pp.figure(figsize=(15, 15))
 
-    for run, ls in izip(['linear', 'nonlinear'], [False, True]):
-        pp.figure(figsize=(15, 15))
+    models.plotting.plot_phase(
+        series['linear'],
+        varnames='H_1 H_2 P_1 P_2'.split(),
+        logscale=True,
+        plotfun=pp.hist2d,
+        bins=400,
+        cmap='gist_earth_r'
+    )
 
-        models.plotting.plot_phase(
-            series[run],
-            varnames='H_1 H_2 P_1 P_2'.split(),
-            logscale=ls,
-            plotfun=pp.hist2d,
-            bins=400,
-            cmap='gist_earth_r'
-        )
-
-        pp.savefig(os.path.join(os.path.dirname(picklefile), '%s.png' % run))
+    pp.savefig(os.path.join(os.path.dirname(picklefile), '.png'))
 
 
 def plot_complex(srcfile, separate=False):
@@ -213,8 +211,8 @@ def plot_complex(srcfile, separate=False):
                     )
 
                 # Only plot the 99.9th percentile of data to avoid outliers.
-                distx = np.percentile(np.abs(sx), 99.9)
-                disty = np.percentile(np.abs(sy), 99.9)
+                distx = np.percentile(np.abs(sx), 99)
+                disty = np.percentile(np.abs(sy), 99)
 
                 pp.xlim(-distx, distx)
                 pp.ylim(-disty, disty)
@@ -266,14 +264,11 @@ def plot_spectra(srcfile, separate=False):
             pp.figure(figsize=(15, 15))
 
         # Color spectrum according to sorted order if plotting overlaid.
-        # Linear: red->yellow, nonlinear: blue->cyan.
         v = float(i) / len(runs) if not separate else 1
 
         colordict = {
             'linear_smoothed': ((1, v, 0), 'y'),
-            'nonlinear_smoothed': ((0, v, 1), 'g'),
-            'linear_median': ((), 'orange'),
-            'nonlinear_median': ((), 'purple')
+            'linear_median': ((), 'orange')
         }
 
         # Plot each spectrum type as two-pane mag/phase plots.
@@ -339,11 +334,10 @@ def plot_errors(srcfile):
 
     # Calculate errors for each variable / spectrum type. errors is a dict
     # where each key, complex, mag, and phase corresponds to a dictionary with
-    # keys composed of the different spectrum types (e.g. linear, nonlinear,
-    # linear_smoothed, nonlinear_smoothed). Each of these keys points to an
-    # (N,N,C) array of MSE values, where N is the number of model state
-    # variables and C is the number of unique configurations (e.g. number of
-    # different NFFT values used.)
+    # keys composed of the different spectrum types (e.g. linear,
+    # linear_smoothed). Each of these keys points to an (N,N,C) array of MSE
+    # values, where N is the number of model state variables and C is the number
+    # of unique configurations (e.g. number of different NFFT values used.)
 
     errors = dict(complex=dict(), mag=dict(), phase=dict())
 
@@ -355,7 +349,7 @@ def plot_errors(srcfile):
 
         analytic_spectrum = run['spectra']['analytic']
 
-        # For each type of spectrum, e.g. linear, nonlinear, *_smoothed, ...
+        # For each type of spectrum, e.g. linear, linear_smoothed, ...
         for spectype, spectrum in run['spectra'].iteritems():
             if spectype != 'analytic':
                 # Initialize empty MSE matrix.
@@ -399,17 +393,12 @@ def plot_errors(srcfile):
     # TODO: This plot is pretty ugly and has misleading/confusing labels.
 
     plotargs = dict(
-        linear=dict(color='r', ls='-', label='linear'),
-        linear_smoothed=dict(color='r', ls='--', label='linear smoothed'),
-        linear_median=dict(color='r', ls=':', label='linear median'),
-        nonlinear=dict(color='gray', ls='-', label='nonlinear'),
-        nonlinear_smoothed=dict(
-            color='gray', ls='--', label='nonlinear smoothed'
-        ),
-        nonlinear_median=dict(color='gray', ls=':', label='nonlinear median')
+        linear=dict(color='r', ls='--', label='linear'),
+        linear_smoothed=dict(color='g', ls=':', label='linear smoothed'),
+        linear_median=dict(color='b', ls='-.', label='linear median')
     )
 
-    xlabels = dict(
+    ylabels = dict(
         phase='$ME(\\angle \\hat{f}_{xy}, \\angle f_{xy})$',
         mag='$\\log MSE(|\\hat{f}_{xy}|, |f_{xy}|)$',
         complex='$\\log MSE(\\hat{f}_{xy}, f_{xy})$',
@@ -435,11 +424,13 @@ def plot_errors(srcfile):
                     **plotargs[spectype]
                 )
 
-                pp.xlabel(xlabels[errortype])
+                pp.ylabel(ylabels[errortype])
+                pp.xlabel(r'timesteps ($\log_2 T$)')
                 pp.xlim(np.amin(nfftlog2s), np.amax(nfftlog2s))
-
-                if errortype != 'phase':
-                    pp.yscale('log')
+                pp.ylim(
+                    np.amin(errors[errortype][spectype][:, i, j]),
+                    np.amax(errors[errortype][spectype][:, i, j])
+                )
 
         lastax = pp.gca()
         pp.subplot(nvars, nvars, nvars)
@@ -467,39 +458,33 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
     for config, cname in izip(configs.combos, configs.hyphenate_changes()):
         print 'Running %s.' % cname
 
-        # Symbol substitution for parameters.
-        sym_params = {
-            models.parasitism.params[name]: value for name, value in
-            pbdict.getkeypath(config, '/simulation/params').iteritems()
-        }
-
         # Simulate time series. Cache time series to avoid re-simulating for
         # the same parameter values.
-        model = models.parasitism.get_model(
-            pbdict.getkeypath(config, '/simulation/model')
-        )
-
+        sim = config['simulation']
+        model = models.parasitism.get_model(sim['model'])
+        sym_params = models.parasitism.sym_params(sim['params'])
         nvars = len(model.vars)
 
         # If we don't actually change the simulation, just use the same series
         # each time.
         serieshash = cname if 'simulation' in cname else 1
-
         seriescache.setdefault(serieshash, {})
         series = seriescache[serieshash]
 
-        noise = np.array(pbdict.getkeypath(
-            config, '/simulation/noise'
-        ))
+        noise = np.array([
+            [sim['noise']['Sh'], sim['noise']['Shh'], 0, 0],
+            [sim['noise']['Shh'], sim['noise']['Sh'], 0, 0],
+            [0, 0, sim['noise']['Sp'], sim['noise']['Spp']],
+            [0, 0, sim['noise']['Spp'], sim['noise']['Sp']]
+        ])
 
         nsteps = pbdict.getkeypath(config, '/simulation/timesteps')
 
         # If we haven't already simulated for these parameters, do so.
-        if 'linear' not in series or 'nonlinear' not in series:
+        if 'linear' not in series:
             # Output file for simulation.
             outfile = os.path.join(
-                os.path.dirname(srcfile),
-                'series-%s.pickle' % cname
+                os.path.dirname(srcfile), 'series-%s.pickle' % cname
             )
 
             if forceseries or not os.path.exists(outfile):
@@ -508,24 +493,7 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
                     print '\tSimulating linear model (%d steps).' % nsteps
 
                     series['linear'] = model.simulate_linear(
-                        np.zeros(nvars),
-                        sym_params,
-                        noise,
-                        nsteps
-                    )
-
-                # Simulate time series for original model.
-                if 'nonlinear' not in series:
-                    print '\tSimulating nonlinear model (%d steps).' % nsteps
-
-                    series['nonlinear'] = model.simulate(
-                        np.array([
-                            model.equilibrium[v].subs(sym_params)
-                            for v in model.vars
-                        ]),
-                        sym_params,
-                        noise,
-                        nsteps
+                        np.zeros(nvars), sym_params, noise, nsteps
                     )
 
                 print '\tWriting %s.' % outfile
@@ -537,24 +505,19 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
                 print '\tLoading saved %s.' % outfile
                 loadseries = cPickle.load(open(outfile, 'r'))
                 series['linear'] = loadseries['linear']
-                series['nonlinear'] = loadseries['nonlinear']
 
         # Output pickle file for cross-spectra (analytic and estimation from
         # simulated time series).
         outfile = os.path.join(
-            os.path.dirname(srcfile),
-            'spectra-%s.pickle' % cname
+            os.path.dirname(srcfile), 'spectra-%s.pickle' % cname
         )
 
         if forcespectra or not os.path.exists(outfile):
             # Calculate spectral matrices.
             spectra = {}
-
             csdargs = pbdict.getkeypath(config, '/analysis/csd')
             smoothingargs = pbdict.getkeypath(config, '/analysis/smoothing')
-
             linear = series['linear']
-            nonlinear = series['nonlinear']
 
             # If we have more time series data than required by our NFFT window
             # size, only use the last NFFT data points rather than using
@@ -566,26 +529,15 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
             # linear time series always starts at zero.
             if 'NFFT' in csdargs and csdargs['NFFT'] < linear.shape[1]:
                 linear = linear[:, -csdargs['NFFT']:]
-                nonlinear = nonlinear[:, -csdargs['NFFT']:]
 
             # Compute cross-spectra.
             freqs, spectra['linear'] = models.utilities.spectrum(
                 linear, **csdargs
             )
 
-            _, spectra['nonlinear'] = models.utilities.spectrum(
-                nonlinear, **csdargs
-            )
-
             # Smooth spectral matrices for better estimate.
-            # TODO: I'm explicitly doing the median filter here. Probably
-            # TODO:     better to just define multiple smoothing windows in the
-            # TODO:     config dictionary . . .
-
             spectra['linear_smoothed'] = np.empty_like(spectra['linear'])
-            spectra['nonlinear_smoothed'] = np.empty_like(spectra['nonlinear'])
             spectra['linear_median'] = np.empty_like(spectra['linear'])
-            spectra['nonlinear_median'] = np.empty_like(spectra['nonlinear'])
 
             magargs = dict(smoothingargs.iteritems())
             magargs['window'] = 'median'
@@ -595,18 +547,8 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
                     spectra['linear'][i, j], **smoothingargs
                 )
 
-                spectra['nonlinear_smoothed'][i, j] = models.utilities.smooth(
-                    spectra['nonlinear'][i, j], **smoothingargs
-                )
-
                 spectra['linear_median'][i, j] = models.utilities.smooth_phasors(
                     spectra['linear'][i, j],
-                    magargs=magargs,
-                    phasorargs=smoothingargs
-                )
-
-                spectra['nonlinear_median'][i, j] = models.utilities.smooth_phasors(
-                    spectra['nonlinear'][i, j],
                     magargs=magargs,
                     phasorargs=smoothingargs
                 )
