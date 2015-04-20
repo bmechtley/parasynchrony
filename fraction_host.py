@@ -32,7 +32,6 @@ import collections
 import multiprocessing
 
 import numpy as np
-import scipy.stats
 import matplotlib.cm
 import matplotlib.colors
 import matplotlib.pyplot as pp
@@ -54,7 +53,7 @@ def poolmap(pool, *args):
     return pool.map_async(*args).get(999999)
 
 
-def fraction_synchrony(params, nfreqs=100):
+def fraction_synchrony(params):
     """
     Compute the fraction of synchrony between patches for which the host is
     responsible using different metrics.
@@ -66,63 +65,29 @@ def fraction_synchrony(params, nfreqs=100):
 
     :param params: model parameter dictionary. Contains "num" and "den" keys
         that contain parameter keys.
-    :param nfreqs: number of frequency values to compute.
     :return: dictionary of metric: fraction pairs.
     """
 
-    fracfuns = dict(
-        fracsync=lambda n, d: np.divide(
-            np.mean(np.abs(n), axis=0), np.mean(np.abs(d), axis=0)
-        ),
-        corrnum=lambda n, d: np.mean(np.abs(n), axis=0),
-        corrden=lambda n, d: np.mean(np.abs(d), axis=0)
-    )
-
-    freqs = np.linspace(0, 0.5, nfreqs)
-
-    corr, cov = dict(), dict()
-
-    for name in ['num', 'den']:
-        newparams = {k: v for k, v in params[name].iteritems() if k not in [
-            'Spp', 'Sp', 'Sh', 'Shh'
-        ]}
-
-        sym_params = models.parasitism.sym_params(newparams)
-
-        noisecov = np.array([
-            [params[name]['Sh'], params[name]['Shh'], 0, 0],
-            [params[name]['Shh'], params[name]['Sh'], 0, 0],
-            [0, 0, params[name]['Sp'], params[name]['Spp']],
-            [0, 0, params[name]['Spp'], params[name]['Sp']]
-        ])
-
-        spectrum = np.abs(np.array([
-            model.calculate_spectrum(sym_params, noisecov, f) for f in freqs
-        ]))
-
-        cov[name] = model.calculate_covariance(sym_params, noisecov)
-
-        # Compute normalized spectrum, i.e. correlation matrix.
-        corr[name] = np.rollaxis(np.array([
-            [
-                np.divide(
-                    np.abs(spectrum[:, row, col]),
-                    np.sqrt(np.prod([
-                        cov[name][pop, pop]**2 for pop in [row, col]
-                    ]))
-                ) for col in range(cov[name].shape[1])
-            ] for row in range(cov[name].shape[0])
-        ]), 2, 0)
-
-    results = {
-        k: fracfun(corr['num'], corr['den'])
-        for k, fracfun in fracfuns.iteritems()
+    correlations = {
+        k: models.utilities.correlation(
+            model.calculate_covariance(
+                models.parasitism.sym_params({
+                    p: v for p, v in params[k].iteritems()
+                    if p not in ['Spp', 'Sp', 'Sh', 'Shh']
+                }), np.array([
+                    [params[k]['Sh'], params[k]['Shh'], 0, 0],
+                    [params[k]['Shh'], params[k]['Sh'], 0, 0],
+                    [0, 0, params[k]['Sp'], params[k]['Spp']],
+                    [0, 0, params[k]['Spp'], params[k]['Sp']]
+                ])
+            )
+        )
+        for k in ['num', 'den']
     }
 
-    # results['correlations'] = corr
-    # results['covariances'] = cov
-
-    return results
+    return dict_merge(
+        correlations, dict(ratio=correlations['num'] / correlations['den'])
+    )
 
 
 def dict_merge(a, b):
@@ -258,32 +223,42 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
     n = len(vkeys)
 
     # Get minimum and maximum values.
-    allvals = np.concatenate([
+    values = np.concatenate([
         np.concatenate([
             metric[i][j].flatten() for j in range(len(metric[i]))
         ]).flatten() for i in range(len(metric))
     ]).flatten()
 
-    minval, maxval = np.amin(allvals), np.amax(allvals)
-    valrange = maxval - minval
+    vmin, vmax, vptp = np.amin(values), np.amax(values), np.ptp(values)
+    onept = (1 - vmin) / (vmax - vmin)
 
-    # Make a new colormap with one colormap for values 0-1.0 fraction of sync.
-    # and another colormap for values 1.0+ fraction of sync.
-    ncolors = 1024
-    cmap_low = matplotlib.cm.get_cmap('gnuplot2')
-    cmap_high = matplotlib.cm.get_cmap('Greens_r')
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
-        'newcmap', [(i, (c[0], c[1], c[2], c[3])) for i, c in izip(
-            chain(
-                np.linspace(0, 1 / valrange, ncolors, endpoint=False),
-                np.linspace(1 / valrange, 1, ncolors),
-            ),
-            chain(
-                [cmap_low(x) for x in np.linspace(0, 1, ncolors)],
-                [cmap_high(x) for x in np.linspace(1, .5, ncolors)]
-            )
-        )]
-    )
+    print 'frac min=%f, max=%f, ptp=%f' % (vmin, vmax, vptp)
+
+    if vmax < 1:
+        cmap = 'gnuplot2'
+    else:
+        # Make a new colormap with one colormap for values 0-1.0 fraction of
+        # sync. and another colormap for values 1.0+ fraction of sync.
+        ncolors = 1024
+        cmap_low = matplotlib.cm.get_cmap('gnuplot2')
+        cmap_high = matplotlib.cm.get_cmap('Greens_r')
+
+        indices = np.concatenate((
+            np.linspace(0, onept, ncolors, endpoint=False),
+            np.linspace(onept, 1, ncolors)
+        )) if vmax > 1 else np.linspace(0, vptp, ncolors * 2)
+
+        colors = np.concatenate((
+            [cmap_low(x) for x in np.linspace(0, 1, ncolors)],
+            [cmap_high(x) for x in np.linspace(1, .5, ncolors)]
+        ))
+
+        print indices
+
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+            'newcmap',
+            [(i, (c[0], c[1], c[2], c[3])) for i, c in izip(indices, colors)]
+        )
 
     fig, subplots = pp.subplots(n, n, figsize=(5 * n + 5, 3.75 * n + 5))
     fig.suptitle('Frac. avg. sync. no para moran/dispersal / all effects')
@@ -314,8 +289,8 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
                 # 1. Plot fraction of average synchrony.
                 imshow = ax.imshow(
                     metric[i][j],
-                    vmin=minval,
-                    vmax=maxval,
+                    vmin=vmin,
+                    vmax=vmax,
                     cmap=cmap,
                     label='host',
                     aspect='auto',
@@ -395,24 +370,11 @@ def main():
         k=dict(default=0.16, range=(0.1, 0.25)),
         mh=dict(default=0.25, range=(0.125, 0.5)),
         mp=dict(default=0.25, range=(0.125, 0.5)),
-        Sh=dict(default=0.5, range=(0.125, 1.0)),
-        Shh=dict(default=0.25, range=(0.125, 1.0)),
-        Sp=dict(default=0.5, range=(0.125, 1.0)),
-        Spp=dict(default=0.25, range=(0.125, 1.0))
+        Sh=dict(default=0.5, range=(0.525, 1.0)),
+        Shh=dict(default=0.25, range=(0.125, 0.5)),
+        Sp=dict(default=0.5, range=(0.525, 1.0)),
+        Spp=dict(default=0.25, range=(0.125, 0.5))
     )
-
-    # params = collections.OrderedDict(
-    #     r=dict(default=2, res=1),
-    #     a=dict(default=1, res=1),
-    #     c=dict(default=1, res=1),
-    #     k=dict(default=.5, range=(.1, .25)),
-    #     mh=dict(default=.25, res=1),
-    #     mp=dict(default=.25, res=1),
-    #     Sh=dict(default=.5, res=1),
-    #     Shh=dict(default=.25, res=1),
-    #     Sp=dict(default=.5, res=1),
-    #     Spp=dict(default=.25, res=1)
-    # )
 
     phash = hash(json.dumps(dict_merge(params, vars(args))))
 
