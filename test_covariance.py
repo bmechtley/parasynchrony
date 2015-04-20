@@ -13,6 +13,8 @@ import itertools
 import multiprocessing
 
 import numpy as np
+import matplotlib
+matplotlib.rc('text', usetex=True)
 import matplotlib.pyplot as pp
 
 import models
@@ -56,6 +58,7 @@ def pool_cov(data):
         covariance, and ts is the number of timesteps to simulate.
     :return (np.ndarray): the covariance estimate for the simulated data.
     """
+
     model, params, noise, ts = data
     return np.cov(
         model.simulate_linear(np.zeros(len(model.vars)), params, noise, ts),
@@ -157,14 +160,11 @@ def plot_convergences(
         ax1.fill_between(
             nsteps, y25, y75, color=colors['simulated'], alpha=0.25
         )
-        ax1.plot(
-            nsteps, ymean,
-            color=colors['simulated'], label='$\\text{simulated}$'
-        )
+        ax1.plot(nsteps, ymean, color=colors['simulated'], label='simulated')
 
         ax1.set_xlim(nsteps[0], nsteps[-1])
         ax1.set_xscale('log')
-        ax1.set_xlabel('$\\text{timesteps }(T)$', color=colors['simulated'])
+        ax1.set_xlabel(r'timesteps $(T)$', color=colors['simulated'])
         ax1.set_xticks(evensteps)
         ax1.set_xticklabels(['$2^{%d}$' % int(t) for t in np.log2(evensteps)])
 
@@ -173,19 +173,17 @@ def plot_convergences(
 
         ax2.plot(
             nfreqs, integrated[:, i, j],
-            color=colors['integrated'], label='$\\text{integrated}$'
+            color=colors['integrated'], label='integrated'
         )
-        ax2.set_xlabel('$\\text{frequencies }(F)$', color=colors['integrated'])
+        ax2.set_xlabel('frequencies $(F)$', color=colors['integrated'])
         ax2.set_xlim(nfreqs[0], nfreqs[-1])
         ax2.set_xscale('log')
         ax2.set_xticks(evenfreqs)
         ax2.set_xticklabels(['$2^{%d}$' % int(f) for f in np.log2(evenfreqs)])
 
         # c. Analytic.
-        ax2.axhline(
-            analytic[i, j], color=colors['analytic'], label='$\\text{analytic}$'
-        )
-        ax2.set_ylabel('$\\Sigma_{%s%s}$' % (model.vars[i], model.vars[j]))
+        ax2.axhline(analytic[i, j], color=colors['analytic'], label='analytic')
+        ax1.set_ylabel('$\\Sigma_{%s%s}$' % (model.vars[i], model.vars[j]))
 
     # 2. Legend.
     pp.subplot(nvars, nvars, nvars)
@@ -213,16 +211,17 @@ def main():
         # 1. Either compute or load precomputed data.
         if extension == '.json':
             config = json.load(open(sys.argv[1]))
+            sim = config['simulation']
 
             # a. Create the model from the loaded configuration.
-            plotargs['model'] = models.parasitism.get_model(
-                config['simulation']['model']
-            )
-            plotargs['noise'] = np.array(config['simulation']['noise'])
-            plotargs['params'] = {
-                models.parasitism.symbols[name]: value for name, value in
-                config['simulation']['params'].iteritems()
-            }
+            plotargs['model'] = models.parasitism.get_model(sim['model'])
+            plotargs['params'] = models.parasitism.sym_params(sim['params'])
+            plotargs['noise'] = np.array([
+                [sim['noise']['Sh'], sim['noise']['Shh'], 0, 0],
+                [sim['noise']['Shh'], sim['noise']['Sh'], 0, 0],
+                [0, 0, sim['noise']['Sp'], sim['noise']['Spp']],
+                [0, 0, sim['noise']['Spp'], sim['noise']['Sp']]
+            ])
 
             # b. Compute everything.
             plotargs['analytic'] = plotargs['model'].calculate_covariance(
