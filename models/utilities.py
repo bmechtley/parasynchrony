@@ -16,6 +16,18 @@ import scipy.signal
 import matplotlib.mlab as mlab
 
 
+def correlation(x):
+    """
+    Return a normalized correlation matrix from a covariance matrix.
+
+    :param x (np.array): input covariance matrix.
+    :return (np.array): normalized correlation matrix with [1...] diagonal.
+    """
+
+    x = np.matrix(x)
+    d = np.matrix(np.diag(x))
+    return x / np.array(d.T * d) ** (1. / 2)
+
 def solve_axatc(a, c):
     """
     Solves for X = A X A' + C
@@ -28,15 +40,15 @@ def solve_axatc(a, c):
     """
 
     a, c = [np.matrix(m) for m in a, c]
+
     evals, evecs = [np.matrix(m) for m in np.linalg.eig(a)]
+    ones = np.matrix(np.ones(evecs.shape))
 
-    # TODO: Maybe this needs to be evals * evals.getH(), if it matters?
-    phi = np.ones(evals.shape) - evals.getH() * evals
-    gamma = np.linalg.inv(evecs) * c * np.linalg.inv(evecs.getH())
+    phi = ones - evals.T * evals.getH().T
+    gamma = np.linalg.inv(evecs) * c * np.linalg.inv(evecs).getH()
     x_tilde = np.multiply(1. / phi, gamma)
-    x = evecs * x_tilde * evecs.getH()
 
-    return x
+    return evecs * x_tilde * evecs.getH()
 
 
 def smooth_phasors(x, magargs=None, phasorargs=None):
@@ -138,6 +150,5 @@ def eval_matrix(m):
     """
 
     return np.array([
-        complex(sympy.im(a).evalf(), sympy.re(a).evalf())
-        for a in m
+        complex(a) if sympy.im(a) != 0 else float(a) for a in m
     ]).reshape(m.shape)

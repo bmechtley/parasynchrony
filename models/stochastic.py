@@ -69,6 +69,9 @@ class StochasticModel:
         noise-dependence matrix.
         """
 
+        if self.equilibrium is None:
+            self.solve_equilibrium()
+
         # Use equilibrium with 0 noise terms for substitutions.
         subs = dict(self.equilibrium.items())
         subs.update({noise: 0 for noise in self.noises})
@@ -108,7 +111,7 @@ class StochasticModel:
     def integrate_covariance_from_analytic_spectrum(
         self,
         params,
-        noise,
+        inputcov,
         nfreqs=1024
     ):
         """
@@ -123,7 +126,7 @@ class StochasticModel:
         """
 
         return np.sum([
-            self.calculate_spectrum(params, noise, f)
+            np.abs(self.calculate_spectrum(params, inputcov, f))
             for f in np.linspace(-0.5, 0.5, nfreqs)
         ], axis=0) / nfreqs
 
@@ -140,8 +143,6 @@ class StochasticModel:
         cached = self.get_cached_matrices(params)
         a, b = [np.matrix(cached[k]) for k in 'A', 'B']
 
-        print 'eig(A)', np.linalg.eig(a)
-
         return a, b, np.eye(len(a)), np.zeros(a.shape)
 
     def zeros_and_poles(self, params):
@@ -154,15 +155,18 @@ class StochasticModel:
         num, den = scipy.signal.ss2tf(*self.state_space(params))
         zpks = [scipy.signal.tf2zpk(n, den) for n in num]
 
-        return zpks
+        return zpksqc
 
     def transfer_function(self, params):
         cached = self.get_cached_matrices(params)
         a, b = cached['A'], cached['B']
 
-        return lambda z: np.linalg.inv(z * np.eye(len(self.vars)) - a) * b
+        return lambda z: np.dot(
+            np.linalg.inv(z * np.eye(len(self.vars)) - a),
+            b
+        )
 
-    def calculate_covariance(self, params, noise):
+    def calculate_covariance(self, params, inputcov):
         """
         Calculate the covariance (autocovariance with lag zero) for the model.
 
@@ -175,11 +179,11 @@ class StochasticModel:
 
         cached = self.get_cached_matrices(params)
         a, b = [np.matrix(cached[k]) for k in 'A', 'B']
-        noise = np.matrix(noise)
 
         # R(0) = M1 R(0) M1' + Q0 Sigma Q0'
-        return utilities.solve_axatc(-a, b * noise * b.T)
-
+        return np.real(
+            utilities.solve_axatc(a, np.dot(np.dot(b, inputcov),  b.T))
+        )
 
     def calculate_eigenvalues(self, params):
         """
@@ -194,7 +198,7 @@ class StochasticModel:
         cached = self.get_cached_matrices(params)
         return np.linalg.eig(cached['A'])
 
-    def calculate_spectrum(self, params, noise, v=0):
+    def calculate_spectrum(self, params, inputcov, v=0):
         """
         Calculate the spectral matrix according to the model linearized around
         its equilibrium. Note that linearize() must be called before this.
@@ -208,14 +212,8 @@ class StochasticModel:
             variables.
         """
 
-        cached = self.get_cached_matrices(params)
-
-        mu = np.exp(-2j * np.pi * v)
-        a, b = cached['A'], cached['B']
-        n = len(a)
-        r = np.multiply(np.linalg.inv(np.eye(n) * mu - a), b)
-
-        return np.dot(np.dot(r,  noise), np.conj(r.T))
+        r = self.transfer_function(params)(np.exp(-2j * np.pi * v))
+        return np.dot(r, np.dot(inputcov, np.conj(r.T)))
 
     def simulate(self, initial, params, noise, timesteps=2**10):
         """
@@ -304,22 +302,20 @@ class StochasticModel:
         """
 
         cached = self.get_cached_matrices(params)
+        a, b = cached['A'], cached['B']
 
         # System tuple: A, B, C, D, dt
-        tout, yout, xout = scipy.signal.dlsim(
-            (
-                cached['A'],
-                cached['B'],
-                np.eye(len(cached['A'])),
-                np.zeros(cached['A'].shape),
-                1
-            ),
-            np.random.multivariate_normal(
+        if len(a) > 1:
+            u = np.random.multivariate_normal(
                 np.zeros((len(noise),)),
                 noise,
                 timesteps
-            ),
-            x0=initial
+            )
+        else:
+            u = np.random.normal(0, np.sqrt(noise), (timesteps, 1))
+
+        _, yout, xout = scipy.signal.dlsim(
+            (a, b, np.eye(len(a)), np.zeros(a.shape), 1), u, x0=initial
         )
 
         self.simulated_linear = yout.T
