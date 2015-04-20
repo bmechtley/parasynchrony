@@ -1,0 +1,86 @@
+import unittest
+import sympy
+import numpy as np
+import models.stochastic
+import itertools
+
+def monotonic_convergence(l):
+    return all([
+        abs(l[i] - l[-1]) < abs(l[i - 1] - l[-1]) for i in range(2, len(l))
+    ])
+
+
+class TestStochasticMethods(unittest.TestCase):
+    x = sympy.symbols('x x_1 x_2')
+    eps = sympy.symbols('eps eps_1 eps_2')
+    u_var = 1.0
+    model = models.stochastic.StochasticModel(
+        [x[0]], [eps[0]], [0.5 * x[0] + 0.5 * eps[0]]
+    )
+
+    u_var2 = np.array([[1.0, 0.5], [0.5, 1.0]])
+    model2 = models.stochastic.StochasticModel(
+        [x[1], x[2]],
+        [eps[1], eps[2]],
+        [(x[1] + x[2] + eps[1]) / 3, (x[1] + x[2] + eps[2]) / 3]
+    )
+
+    def test_analytic_variance(self):
+        # X_t = .5X_{t-1} + .5u, u ~ N(0, sigma_u)
+        # sigma^2_x = (1/2)^2 sigma^2_x + (1/2)^2 sigma^2_u
+        #   sigma^2_x = (1/4)sigma^2_x + (1/4)sigma^2_u
+        #   (3/4)sigma^2_x = (1/4)sigma^2_u
+        #   sigma^2_x = (1/3)sigma^2_u
+
+        analytic_var_1 = self.model.calculate_covariance({}, [self.u_var])
+        self.assertEqual(analytic_var_1, self.u_var / 3)
+
+        # This one's a little more complicated.
+        # TODO: See if I can find a model that has a simpler analytic solution
+        # TODO:     so I don't have to worry about numerical error.
+        analytic_var_2 = self.model2.calculate_covariance({}, [self.u_var2])
+        det = np.linalg.det(
+            analytic_var_2 - np.array([[8./45, 11./90], [11./90, 8./45]])
+        )
+        self.assertTrue(det < np.finfo(type(det)).eps)
+
+    def test_integrated_variance(self):
+        integrated_vars_1 = [
+            self.model.integrate_covariance_from_analytic_spectrum(
+                {}, [self.u_var], n**2
+            ) for n in range(1, 16)
+        ]
+
+        # First, make sure this is monotonically converging.
+        self.assertTrue(monotonic_convergence(integrated_vars_1))
+
+        # Second, make sure it's reasonably close to the analytic result.
+        # TODO: This "tolerance" value is totally arbitrary.
+        analytic_var_1 = self.model.calculate_covariance({}, [self.u_var])
+        diff_1 = np.abs(integrated_vars_1[-1] - analytic_var_1)
+        tolerance = 2 ** 43
+        self.assertTrue(diff_1 <= np.finfo(diff_1.dtype).eps * tolerance)
+
+    def test_simulated_variance(self):
+        # TODO: Stub. Need to find a suitable way to test accuracy / convergence
+        # TODO:     of covariance of random simulations.
+        pass
+
+    def test_correlation(self):
+        self.assertEqual(
+            models.utilities.correlation(
+                self.model.calculate_covariance({}, [self.u_var])
+            ), 1.0
+        )
+
+        self.assertTrue(
+            np.array_equal(
+                models.utilities.correlation(
+                    self.model2.calculate_covariance({}, [self.u_var2])
+                ),
+                [[1, 11./16], [11./16, 1]]
+            )
+        )
+
+if __name__ == '__main__':
+    unittest.main()
