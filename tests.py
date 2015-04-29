@@ -2,17 +2,17 @@ import unittest
 import sympy
 import numpy as np
 import models.stochastic
-import itertools
+
 
 def monotonic_convergence(l):
-    return all([
-        abs(l[i] - l[-1]) < abs(l[i - 1] - l[-1]) for i in range(2, len(l))
-    ])
+    diff = np.abs(np.diff(l))
+    return np.all(np.less_equal(diff[:-1], diff[1:]))
 
 
 class TestStochasticMethods(unittest.TestCase):
     x = sympy.symbols('x x_1 x_2')
     eps = sympy.symbols('eps eps_1 eps_2')
+
     u_var = 1.0
     model = models.stochastic.StochasticModel(
         [x[0]], [eps[0]], [0.5 * x[0] + 0.5 * eps[0]]
@@ -36,13 +36,10 @@ class TestStochasticMethods(unittest.TestCase):
         self.assertEqual(analytic_var_1, self.u_var / 3)
 
         # This one's a little more complicated.
-        # TODO: See if I can find a model that has a simpler analytic solution
-        # TODO:     so I don't have to worry about numerical error.
         analytic_var_2 = self.model2.calculate_covariance({}, [self.u_var2])
-        det = np.linalg.det(
-            analytic_var_2 - np.array([[8./45, 11./90], [11./90, 8./45]])
-        )
-        self.assertTrue(det < np.finfo(type(det)).eps)
+        self.assertTrue(np.allclose(
+            analytic_var_2, np.array([[8./45, 11./90], [11./90, 8./45]])
+        ))
 
     def test_integrated_variance(self):
         integrated_vars_1 = [
@@ -81,6 +78,17 @@ class TestStochasticMethods(unittest.TestCase):
                 [[1, 11./16], [11./16, 1]]
             )
         )
+
+    def test_covariance_multiples(self):
+        cov_base_1 = self.model.calculate_covariance({}, self.u_var)
+        cov_base_2 = self.model2.calculate_covariance({}, self.u_var2)
+
+        for mult in np.linspace(-2, 2, 9):
+            cov_1 = self.model.calculate_covariance({}, self.u_var * mult)
+            cov_2 = self.model2.calculate_covariance({}, self.u_var2 * mult)
+
+            self.assertEqual(cov_1, cov_base_1 * mult)
+            self.assertTrue(np.allclose(cov_2, cov_base_2 * mult))
 
 if __name__ == '__main__':
     unittest.main()
