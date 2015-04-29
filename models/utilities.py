@@ -14,6 +14,31 @@ import sympy
 
 import scipy.signal
 import matplotlib.mlab as mlab
+import collections
+
+
+class CacheDict(collections.OrderedDict):
+    """
+    Size-limited dictionary for caching results. See:
+    http://stackoverflow.com/questions/2437617/
+        limiting-the-size-of-a-python-dictionary
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.size_limit = kwargs.pop('size_limit', None)
+        collections.OrderedDict.__init__(self, *args, **kwargs)
+        self._check_size_limit()
+
+    def __setitem__(self, key, value, dict_setitem=dict.__setitem__):
+        collections.OrderedDict.__setitem__(
+            self, key, value, dict_setitem=dict_setitem
+        )
+        self._check_size_limit()
+
+    def _check_size_limit(self):
+        if self.size_limit is not None:
+            while len(self) > self.size_limit:
+                self.popitem(last=False)
 
 
 def correlation(x):
@@ -24,9 +49,12 @@ def correlation(x):
     :return (np.array): normalized correlation matrix with [1...] diagonal.
     """
 
-    x = np.matrix(x)
-    d = np.matrix(np.diag(x))
-    return x / np.array(d.T * d) ** (1. / 2)
+    if np.any(np.isnan(x)):
+        return np.full_like(x, np.nan)
+    else:
+        x = np.matrix(x)
+        d = np.matrix(np.diag(x))
+        return x / np.array(d.T * d) ** (1. / 2)
 
 def solve_axatc(a, c):
     """
