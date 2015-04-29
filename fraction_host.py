@@ -9,27 +9,17 @@ the Pearson correlation coefficient between the two host populations in either
 patch without any parasitoid synchronizing influences (i.e. Spp=0, mp=0) divided
 by the correlation between the two hosts with all synchronizing influences.
 
-TODO: Change color scheme so the curve < 1 is easy to grasp (i.e. is it
-TODO:   logarithmic? - perhaps use banding) and values > 1 are still
-TODO:   distinguishable (e.g. fade to white). Put all plots on the same
-TODO:   cmap/norm.
-ope
-TODO: Run at higher resolutions.
-TODO: Identify interesting combinations/regions.
 TODO: Try to find a reasonable bounding box over which to average these things.
-
-TODO: Run with origin within weird k/r / k/mp region.
 """
 
 import os
+import time
 import json
 import cPickle
 import argparse
-
-from itertools import combinations_with_replacement, izip, chain
-
 import collections
 import multiprocessing
+from itertools import combinations_with_replacement, izip
 
 import numpy as np
 import matplotlib.cm
@@ -41,18 +31,21 @@ import models
 model = models.parasitism.get_model('nbd(2)')
 
 
-def poolmap(pool, *args):
-    """
-    Simple helper to make a parallel processing pool respond to
-    KeyboardInterrupt.
-    :param pool (multiprocessing.Pool): the pool.
-    :param args: positional arguments for pool.map_async(...)
-    :return (list): mapped results.
-    """
+def multipool(
+        mapfun,
+        mapdata,
+        processes=multiprocessing.cpu_count(),
+        timeout=99999,
+        **pargs
+):
+    if processes == 1:
+        return map(mapfun, mapdata)
+    else:
+        return multiprocessing.Pool(processes=processes).map_async(
+            mapfun, mapdata, **pargs
+        ).get(timeout)
 
-    return pool.map_async(*args).get(999999)
-
-
+    
 def fraction_synchrony(params):
     """
     Compute the fraction of synchrony between patches for which the host is
@@ -85,9 +78,12 @@ def fraction_synchrony(params):
         for k in ['num', 'den']
     }
 
-    return dict_merge(
-        correlations, dict(ratio=correlations['num'] / correlations['den'])
-    )
+    if np.any(np.isnan(correlations['num'])) or np.any(np.isnan(correlations['den'])):
+        correlations['ratio'] = np.full_like(correlations['num'], np.nan())
+    else:
+        correlations['ratio'] = correlations['num'] / correlations['den']
+
+    return correlations
 
 
 def dict_merge(a, b):
@@ -120,14 +116,22 @@ def process_products(opts):
         fraction_synchrony for more info.
     """
 
-    varyingkeys = [k for k in opts['params'] if opts['params'][k]['res'] > 1]
-    defaults = {k: v['default'] for k, v in opts['params'].iteritems()}
-    k1, k2 = opts['k1'], opts['k2']
-    r1, r2 = [opts['params'][k]['range'] for k in [k1, k2]]
+    params, k1, k2 = opts
+
+    varyingkeys = [k for k in params if params[k]['res'] > 1]
+    defaults = {k: v['default'] for k, v in params.iteritems()}
+    r1, r2 = [params[k]['range'] for k in [k1, k2]]
 
     keycombos = list(combinations_with_replacement(varyingkeys, 2))
     strargs = (keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2)
     print 'Processing %d / %d (%s, %s).' % strargs
+    strargs = '%d / %d (%s, %s) (PID %d).' % (
+        keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2, os.getpid()
+    )
+
+    print 'Processing', strargs
+
+    btime = time.clock()
 
     fracsync = lambda a, b: fraction_synchrony(dict(
         num=dict_merge(defaults, {k1: a, k2: b, 'Spp': 0, 'mp': 0}),
@@ -137,11 +141,7 @@ def process_products(opts):
     if k1 != k2:
         result = [[fracsync(v1, v2) for v2 in r2] for v1 in r1]
         result = {
-            k: np.array([
-                [
-                    cell[k] for cell in row
-                ] for row in result
-            ])
+            k: np.array([[cell[k] for cell in row ] for row in result])
             for k in result[0][0].keys()
         }
     else:
@@ -151,11 +151,12 @@ def process_products(opts):
             for k in result[0].keys()
         }
 
-    print '\t\t\t\t\tCompleted %d / %d (%s, %s).' % strargs
+    result['time'] = time.clock() - btime
+    print '\t\t\t\t\tCompleted (%.3fs)' % (result['time']), strargs
     return result
 
 
-def make_products(params=None, pool=None):
+def make_products(params=None, processes=multiprocessing.cpu_count()):
     """
     Compute fraction of synchrony metrics across combinations of values for each
     pair of model parameters.
@@ -173,12 +174,20 @@ def make_products(params=None, pool=None):
 
     keyproduct = list(combinations_with_replacement(varyingkeys, 2))
 
+    btime = time.clock()
+
     # Returns an array of dictionaries, each containing a two-dimensional array
     # with the different metrics returned by fraction_synchrony across the
     # combination of each pair of varying parameters.
-    products = poolmap(pool, process_products, [
-        dict(params=params, k1=k1, k2=k2) for k1, k2 in keyproduct
-    ])
+    products = multipool(
+        process_products,
+        [(params,) + ks for ks in keyproduct],
+        processes=processes
+    )
+
+    print 'Finished computing correlation ratios (%.3fs).' % (
+        time.clock() - btime
+    )
 
     # Restructure so we have a dictionary with fraction_synchrony metrics as
     # keys and lists of two-dimensional arrays of their values across the
@@ -229,35 +238,32 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
         ]).flatten() for i in range(len(metric))
     ]).flatten()
 
-    vmin, vmax, vptp = np.amin(values), np.amax(values), np.ptp(values)
-    onept = (1 - vmin) / (vmax - vmin)
+    vmin, vmax = np.real(np.nanmin(values)), np.real(np.nanmax(values))
+    vptp, onept = vmax - vmin, (1 - vmin) / (vmax - vmin)
 
-    print 'frac min=%f, max=%f, ptp=%f' % (vmin, vmax, vptp)
-
-    if vmax < 1:
-        cmap = 'gnuplot2'
+    if vmax <= 1:
+        cmap = matplotlib.cm.get_cmap('gnuplot2')
     else:
-        # Make a new colormap with one colormap for values 0-1.0 fraction of
-        # sync. and another colormap for values 1.0+ fraction of sync.
-        ncolors = 1024
+        # Make a new colormap with one colormap for values 0-1 fraction of
+        # sync. and another colormap for values > 1 fraction of sync.
+        ncolors = 128
         cmap_low = matplotlib.cm.get_cmap('gnuplot2')
         cmap_high = matplotlib.cm.get_cmap('Greens_r')
 
         indices = np.concatenate((
             np.linspace(0, onept, ncolors, endpoint=False),
             np.linspace(onept, 1, ncolors)
-        )) if vmax > 1 else np.linspace(0, vptp, ncolors * 2)
+        ))
+
+        print indices
 
         colors = np.concatenate((
             [cmap_low(x) for x in np.linspace(0, 1, ncolors)],
             [cmap_high(x) for x in np.linspace(1, .5, ncolors)]
         ))
 
-        print indices
-
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
-            'newcmap',
-            [(i, (c[0], c[1], c[2], c[3])) for i, c in izip(indices, colors)]
+            'newcmap', zip(indices, colors)
         )
 
     fig, subplots = pp.subplots(n, n, figsize=(5 * n + 5, 3.75 * n + 5))
@@ -288,12 +294,9 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
 
                 # 1. Plot fraction of average synchrony.
                 imshow = ax.imshow(
-                    metric[i][j],
-                    vmin=vmin,
-                    vmax=vmax,
-                    cmap=cmap,
-                    label='host',
-                    aspect='auto',
+                    np.real(metric[i][j]),
+                    vmin=vmin, vmax=vmax, cmap=cmap,
+                    label='host', aspect='auto',
                     extent=(rj[0], rj[-1], ri[-1], ri[0])
                 )
 
@@ -304,7 +307,12 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
                 # 2. Plot contours.
                 contour = ax.contour(
                     rj, ri, metric[i][j],
-                    colors=['w', 'w', 'w'],
+                    colors=[
+                        tuple([np.round(1.0 - np.mean(
+                            cmap(np.interp(x, [vmin, vmax], [0, 1]))[:3]
+                        ))]*3) + (1.0,)
+                        for x in percvals
+                    ],
                     levels=list(percvals),
                     linestyles=['dotted', 'dashed', 'solid']
                 )
@@ -321,13 +329,18 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
                 # 4. Labels.
                 colorbar = pp.colorbar(imshow, ax=ax)
                 colorbar.ax.tick_params(labelsize=8)
-                ax.clabel(contour, inline=1, fontsize=8)
+                ax.clabel(contour, inline=1, fontsize=8, fmt={
+                    percval: '%.2f (%d\\%%)' % (percval, perc)
+                    for percval, perc in izip(percvals, percs)
+                })
             else:
-                ax.plot(ri, metric[i][j], label=metricname)
+                ax.plot(ri, np.real(metric[i][j]), label=metricname)
 
                 lineprops = dict(color='r', ls=':')
                 ax.axvline(di, label='origin', **lineprops)
-                ax.axhline(np.interp(di, ri, metric[i][j]), **lineprops)
+                ax.axhline(
+                    np.interp(di, ri, np.real(metric[i][j])), **lineprops
+                )
 
                 ax.set_xlabel('$%s$ (%s)' % (si, li))
                 ax.set_ylabel(metricname)
@@ -337,9 +350,7 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
                 ax.legend()
 
     pp.subplots_adjust(
-        hspace=0.4, wspace=0.4,
-        left=0.05, bottom=0.05,
-        top=0.95, right=0.95
+        hspace=0.4, wspace=0.4, left=0.05, bottom=0.05, top=0.95, right=0.95
     )
 
     pp.savefig(filename, dpi=240)
@@ -364,16 +375,16 @@ def main():
     args = parser.parse_args()
 
     params = collections.OrderedDict(
-        r=dict(default=2.0, range=(1.1, 4.0), res=1),
-        a=dict(default=1.0, res=1),
-        c=dict(default=1.0, res=1),
-        k=dict(default=0.16, range=(0.1, 0.25)),
-        mh=dict(default=0.25, range=(0.125, 0.5)),
-        mp=dict(default=0.25, range=(0.125, 0.5)),
-        Sh=dict(default=0.5, range=(0.525, 1.0)),
-        Shh=dict(default=0.25, range=(0.125, 0.5)),
-        Sp=dict(default=0.5, range=(0.525, 1.0)),
-        Spp=dict(default=0.25, range=(0.125, 0.5))
+        r=dict(default=2.0, range=(1, 4)),
+        a=dict(default=1.0, range=(1, 4)),
+        c=dict(default=1.0, range=(1, 4)),
+        k=dict(default=0.5, range=(0.1, 0.9)),
+        mh=dict(default=0.25, range=(0, 0.5)),
+        mp=dict(default=0.25, range=(0, 0.5)),
+        Sh=dict(default=1, res=1),
+        Shh=dict(default=0.5, res=1),
+        Sp=dict(default=1, res=1),
+        Spp=dict(default=0.5, res=1)
     )
 
     phash = hash(json.dumps(dict_merge(params, vars(args))))
@@ -382,8 +393,6 @@ def main():
         p.setdefault('res', args.resolution)
         p.setdefault('range', (p['default'], p['default']))
         p['range'] = np.linspace(p['range'][0], p['range'][1], p['res'])
-
-    pool = multiprocessing.Pool(processes=args.poolcpus)
 
     cachepath = 'cache/fraction-host-%d-%s.pickle' % (args.resolution, phash)
     plotprefix = 'plots/fraction-host-%d-%s' % (args.resolution, phash)
@@ -394,7 +403,7 @@ def main():
 
     if not os.path.exists(cachepath):
         print 'Computing %s with %d processes.' % (cachepath, args.poolcpus)
-        products = make_products(params=params, pool=pool)
+        products = make_products(params=params, processes=args.poolcpus)
 
         print 'Writing %s.' % cachepath
         cPickle.dump(products, open(cachepath, 'w'))
@@ -404,20 +413,17 @@ def main():
 
     metrics = {
         k: [
-            [
-                pj[:, :, 0, 1]
-                if pj.ndim == 4
-                else pj[:, 0, 1]
-                for pj in pi
-            ] for pi in v
+            [pj[:, :, 0, 1] if pj.ndim == 4 else pj[:, 0, 1] for pj in pi]
+            for pi in v
         ]
-        for k, v in products.iteritems()
+        for k, v in products.iteritems() if k != 'time'
     }
 
     for k, v in metrics.iteritems():
-        plotpath = '%s-%s.png' % (plotprefix, k)
-        print 'Plotting %s.' % plotpath
-        plot_fracsync(params, v, plotpath, k)
+        if k != 'time':
+            plotpath = '%s-%s.png' % (plotprefix, k)
+            print 'Plotting %s.' % plotpath
+            plot_fracsync(params, v, plotpath, k)
 
 if __name__ == '__main__':
     main()
