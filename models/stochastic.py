@@ -3,6 +3,7 @@ import string
 import numpy as np
 import sympy
 
+import warnings
 import scipy.signal
 
 import utilities
@@ -18,7 +19,7 @@ class StochasticModel:
 
     # TODO: Peak magnitude?
 
-    def __init__(self, symvars, noises, equation):
+    def __init__(self, symvars, noises, equation, cachesize=10000):
         """
         Initialize a model object.
         :param symvars: list of SymPy symbols representing state variables.
@@ -43,14 +44,14 @@ class StochasticModel:
 
         # Cache for matrices evaluated for certain parameters. The cache is
         # indexed by a hash of the dictionary of parameters.
-        self.cache = {}
+        self.cache = utilities.CacheDict(size_limit=cachesize)
 
     def solve_equilibrium(self):
         """Find the [first] non-trivial equilibrium point."""
 
         # TODO: This currently assumes there's one non-trivial equilibrium
-        # TODO:     point and that it's the second returned by SymPy's solve().
-        # TODO:     That's a dangerous assumption.
+        # point and that it's the second returned by SymPy's solve().
+        # That's a dangerous assumption.
 
         self.equilibrium = sympy.solve(
             sympy.Eq(self.vars, self.deterministic),
@@ -155,7 +156,7 @@ class StochasticModel:
         num, den = scipy.signal.ss2tf(*self.state_space(params))
         zpks = [scipy.signal.tf2zpk(n, den) for n in num]
 
-        return zpksqc
+        return zpks
 
     def transfer_function(self, params):
         cached = self.get_cached_matrices(params)
@@ -175,15 +176,23 @@ class StochasticModel:
         :return: (np.array): covariance matrix.
         """
 
-        # TODO: Covariance: verify this result.
-
         cached = self.get_cached_matrices(params)
-        a, b = [np.matrix(cached[k]) for k in 'A', 'B']
+        a, b = cached['A'], cached['B']
 
         # R(0) = M1 R(0) M1' + Q0 Sigma Q0'
-        return np.real(
-            utilities.solve_axatc(a, np.dot(np.dot(b, inputcov),  b.T))
-        )
+        if np.all(np.isfinite(a)) and np.all(np.isfinite(b)):
+            result = np.real(
+                utilities.solve_axatc(a, np.dot(np.dot(b, inputcov),  b.T))
+            )
+        else:
+            warnings.warn('%s %s %s' % (
+                'A and/or B matrix contained inf or NaN values.',
+                'Returning NaN covariance matrix.',
+                'Input parameters: %s.' % str(params)
+            ))
+            result = np.full_like(a, np.nan)
+
+        return result
 
     def calculate_eigenvalues(self, params):
         """
@@ -233,15 +242,10 @@ class StochasticModel:
 
         nstates = len(initial)
 
-        params = dict(params.items())
-
         # Begin the model at the equilibrium.
+        params = dict(params.items())
         params.update({noise_var: 0 for noise_var in self.noises})
-        params.update({
-            state_var: self.equilibrium[state_var]
-            for state_var in self.vars
-        })
-
+        params.update({k: self.equilibrium[k] for k in self.vars})
         param_keys = params.keys()
 
         # Use sympy.utilities.lambdify to set up a lambda function to quickly
@@ -249,17 +253,14 @@ class StochasticModel:
         # of Python code, so first translate all variables into Python-friendly
         # variable names by replacing any special LaTeX characters with
         # underscores.
-        trantab = string.maketrans(r'{}\()^*[]', r'_________')
-        fixed_param_keys = [str(k).translate(trantab) for k in param_keys]
+        trans = string.maketrans(r'{}\()^*[]', r'_________')
+        fixed_keys = [str(k).translate(trans) for k in param_keys]
+        subs = dict(zip(param_keys, fixed_keys))
 
-        subs = dict(zip(param_keys, fixed_param_keys))
         param_inds = {param_keys[i]: i for i in range(len(param_keys))}
         param_vals = [params[k] for k in param_keys]
 
-        f = sympy.utilities.lambdify(
-            fixed_param_keys,
-            self.stochastic.subs(subs)
-        )
+        f = sympy.utilities.lambdify(fixed_keys, self.stochastic.subs(subs))
 
         # Simulate the model.
         rnoise_mean = np.zeros((len(noise),))
@@ -307,12 +308,10 @@ class StochasticModel:
         # System tuple: A, B, C, D, dt
         if len(a) > 1:
             u = np.random.multivariate_normal(
-                np.zeros((len(noise),)),
-                noise,
-                timesteps
+                np.zeros_like(noise), noise, timesteps
             )
         else:
-            u = np.random.normal(0, np.sqrt(noise), (timesteps, 1))
+            u = np.random.normal(0, np.sqrt(float(noise[0, 0])), (timesteps, 1))
 
         _, yout, xout = scipy.signal.dlsim(
             (a, b, np.eye(len(a)), np.zeros(a.shape), 1), u, x0=initial
