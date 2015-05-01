@@ -31,7 +31,6 @@ class TestStochasticMethods(unittest.TestCase):
         #   sigma^2_x = (1/4)sigma^2_x + (1/4)sigma^2_u
         #   (3/4)sigma^2_x = (1/4)sigma^2_u
         #   sigma^2_x = (1/3)sigma^2_u
-
         analytic_var_1 = self.model.calculate_covariance({}, [self.u_var])
         self.assertEqual(analytic_var_1, self.u_var / 3)
 
@@ -59,8 +58,8 @@ class TestStochasticMethods(unittest.TestCase):
         self.assertTrue(diff_1 <= np.finfo(diff_1.dtype).eps * tolerance)
 
     def test_simulated_variance(self):
-        # TODO: Stub. Need to find a suitable way to test accuracy / convergence
-        # TODO:     of covariance of random simulations.
+        # TODO: Stub. Need to find a suitable way to test accuracy /
+        # TODO:     convergence of covariance of random simulations.
         pass
 
     def test_correlation(self):
