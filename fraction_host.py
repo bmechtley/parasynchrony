@@ -14,7 +14,6 @@ TODO: Try to find a reasonable bounding box over which to average these things.
 
 import os
 import time
-import json
 import cPickle
 import argparse
 import collections
@@ -27,9 +26,9 @@ import matplotlib.colors
 import matplotlib.pyplot as pp
 
 import models
+import utilities
 
 model = models.parasitism.get_model('nbd(2)')
-
 
 def multipool(
         mapfun,
@@ -62,23 +61,23 @@ def fraction_synchrony(params):
     """
 
     correlations = {
-        k: models.utilities.correlation(
+        term: models.utilities.correlation(
             model.calculate_covariance(
                 models.parasitism.sym_params({
-                    p: v for p, v in params[k].iteritems()
-                    if p not in ['Spp', 'Sp', 'Sh', 'Shh']
-                }), np.array([
-                    [params[k]['Sh'], params[k]['Shh'], 0, 0],
-                    [params[k]['Shh'], params[k]['Sh'], 0, 0],
-                    [0, 0, params[k]['Sp'], params[k]['Spp']],
-                    [0, 0, params[k]['Spp'], params[k]['Sp']]
+                    k: v for k, v in p.iteritems()
+                    if k not in ['Sp', 'Chh', 'Cpp']
+                }), p['Sh'] * np.array([
+                    [1, p['Chh'], 0, 0],
+                    [p['Chh'], 1, 0, 0],
+                    [0, 0, p['Sp'], p['Sp'] * p['Cpp']],
+                    [0, 0, p['Sp'] * p['Cpp'], p['Sp']]
                 ])
             )
         )
-        for k in ['num', 'den']
+        for term, p in params.iteritems()
     }
 
-    if np.any(np.isnan(correlations['num'])) or np.any(np.isnan(correlations['den'])):
+    if np.any(np.isnan(np.array([correlations['num'], correlations['den']]))):
         correlations['ratio'] = np.full_like(correlations['num'], np.nan())
     else:
         correlations['ratio'] = correlations['num'] / correlations['den']
@@ -116,47 +115,65 @@ def process_products(opts):
         fraction_synchrony for more info.
     """
 
-    params, k1, k2 = opts
+    params, cacheprefix, k1, k2 = opts
+    cachepath = '%s-%s.pickle' % (cacheprefix, utilities.paramhash(opts))
 
     varyingkeys = [k for k in params if params[k]['res'] > 1]
     defaults = {k: v['default'] for k, v in params.iteritems()}
     r1, r2 = [params[k]['range'] for k in [k1, k2]]
 
     keycombos = list(combinations_with_replacement(varyingkeys, 2))
-    strargs = (keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2)
-    print 'Processing %d / %d (%s, %s).' % strargs
     strargs = '%d / %d (%s, %s) (PID %d).' % (
-        keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2, os.getpid()
+         keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2, os.getpid()
     )
 
-    print 'Processing', strargs
+    result = None
 
-    btime = time.clock()
-
-    fracsync = lambda a, b: fraction_synchrony(dict(
-        num=dict_merge(defaults, {k1: a, k2: b, 'Spp': 0, 'mp': 0}),
-        den=dict_merge(defaults, {k1: a, k2: b})
-    ))
-
-    if k1 != k2:
-        result = [[fracsync(v1, v2) for v2 in r2] for v1 in r1]
-        result = {
-            k: np.array([[cell[k] for cell in row ] for row in result])
-            for k in result[0][0].keys()
-        }
+    if os.path.exists(cachepath):
+        print 'Loading', strargs
+        result = cPickle.load(open(cachepath))
     else:
-        result = [fracsync(v1, v1) for v1 in r1]
-        result = {
-            k: np.array([cell[k] for cell in result])
-            for k in result[0].keys()
-        }
+        print 'Processing', strargs
 
-    result['time'] = time.clock() - btime
-    print '\t\t\t\t\tCompleted (%.3fs)' % (result['time']), strargs
+        btime = time.clock()
+
+        fracsync = lambda a, b: fraction_synchrony(dict(
+            num=dict_merge(defaults, {
+                k1: a,
+                k2: b,
+                'Spp': 0, 'mp': 0, 'Cpp': 0
+            }),
+            den=dict_merge(defaults, {k1: a, k2: b})
+        ))
+
+        if k1 != k2:
+            result = [[fracsync(v1, v2) for v2 in r2] for v1 in r1]
+            result = {
+                k: np.array([[cell[k] for cell in row ] for row in result])
+                for k in result[0][0].keys()
+            }
+        else:
+            result = [fracsync(v1, v1) for v1 in r1]
+            result = {
+                k: np.array([cell[k] for cell in result])
+                for k in result[0].keys()
+            }
+
+        result['time'] = time.clock() - btime
+        print '\t\t\t\t\tCompleted (%.3fs)' % (result['time']), strargs
+
+        btime = time.clock()
+        cPickle.dump(result, open(cachepath, 'w'))
+        print '\t\t\t\t\tSaved (%.3f)' % (time.clock() - btime), strargs
+
     return result
 
 
-def make_products(params=None, processes=multiprocessing.cpu_count()):
+def make_products(
+        params=None,
+        processes=multiprocessing.cpu_count(),
+        cacheprefix=''
+):
     """
     Compute fraction of synchrony metrics across combinations of values for each
     pair of model parameters.
@@ -164,6 +181,8 @@ def make_products(params=None, processes=multiprocessing.cpu_count()):
     :param params (dict): Parameter dictionary, of the form
         {name: {default: default, range: (low, high), res: resolution}.
     :param pool (multiprocessing.Pool): pool used for parallel computation.
+    :param cacheprefix (str): prefix for cached pickle files. Hash of
+        parameters will be appended for each process.
     :return: (P, P, R1, R2) dimensional list (not array) of dictionaries where
         each key is a different synchrony metric, e.g. fracavgsync. See
         fraction_synchrony for more info.
@@ -181,7 +200,7 @@ def make_products(params=None, processes=multiprocessing.cpu_count()):
     # combination of each pair of varying parameters.
     products = multipool(
         process_products,
-        [(params,) + ks for ks in keyproduct],
+        [(params, cacheprefix) + ks for ks in keyproduct],
         processes=processes
     )
 
@@ -228,7 +247,7 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
 
     # Get fraction of host synchrony from host effects for all combinations
     # parameters that vary over more than one value (res > 1).
-    vkeys = [k for k in params if params[k]['res'] > 1]
+    vkeys = [k for k in params.iterkeys() if params[k]['res'] > 1]
     n = len(vkeys)
 
     # Get minimum and maximum values.
@@ -239,32 +258,7 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
     ]).flatten()
 
     vmin, vmax = np.real(np.nanmin(values)), np.real(np.nanmax(values))
-    vptp, onept = vmax - vmin, (1 - vmin) / (vmax - vmin)
-
-    if vmax <= 1:
-        cmap = matplotlib.cm.get_cmap('gnuplot2')
-    else:
-        # Make a new colormap with one colormap for values 0-1 fraction of
-        # sync. and another colormap for values > 1 fraction of sync.
-        ncolors = 128
-        cmap_low = matplotlib.cm.get_cmap('gnuplot2')
-        cmap_high = matplotlib.cm.get_cmap('Greens_r')
-
-        indices = np.concatenate((
-            np.linspace(0, onept, ncolors, endpoint=False),
-            np.linspace(onept, 1, ncolors)
-        ))
-
-        print indices
-
-        colors = np.concatenate((
-            [cmap_low(x) for x in np.linspace(0, 1, ncolors)],
-            [cmap_high(x) for x in np.linspace(1, .5, ncolors)]
-        ))
-
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
-            'newcmap', zip(indices, colors)
-        )
+    cmaps = [matplotlib.cm.get_cmap(cm) for cm in ['cubehelix', 'gnuplot2']]
 
     fig, subplots = pp.subplots(n, n, figsize=(5 * n + 5, 3.75 * n + 5))
     fig.suptitle('Frac. avg. sync. no para moran/dispersal / all effects')
@@ -291,25 +285,31 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
 
             if i != j:
                 subplots[i][j].set_axis_off()
-
-                # 1. Plot fraction of average synchrony.
-                imshow = ax.imshow(
-                    np.real(metric[i][j]),
-                    vmin=vmin, vmax=vmax, cmap=cmap,
-                    label='host', aspect='auto',
-                    extent=(rj[0], rj[-1], ri[-1], ri[0])
-                )
-
                 flat = metric[i][j].flatten()
                 percs = [25, 50, 75]
                 percvals = [np.percentile(flat, q) for q in percs]
 
+                # 1. Plot fraction of average synchrony.
+                fill_contour = ax.contourf(
+                    rj, ri, np.real(metric[i][j]), 128,
+                    vmin=vmin, vmax=vmax if vmax < 1 else 1, cmap=cmaps[0]
+                )
+                fill_contour.cmap.set_over((0, 0, 0, 0))
+                fill_contour2 = None
+
+                if vmax > 1:
+                    fill_contour2 = ax.contourf(
+                        rj, ri, np.real(metric[i][j]), 128,
+                        vmin=1, vmax=vmax, cmap=cmaps[1]
+                    )
+                    fill_contour2.cmap.set_under((0, 0, 0, 0))
+
                 # 2. Plot contours.
-                contour = ax.contour(
+                line_contour = ax.contour(
                     rj, ri, metric[i][j],
                     colors=[
                         tuple([np.round(1.0 - np.mean(
-                            cmap(np.interp(x, [vmin, vmax], [0, 1]))[:3]
+                            cmaps[x >= 1](np.interp(x, [vmin, 1], [0, 1]))[:3]
                         ))]*3) + (1.0,)
                         for x in percvals
                     ],
@@ -327,9 +327,16 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
                 ax.tick_params(axis='both', which='major', labelsize=8)
 
                 # 4. Labels.
-                colorbar = pp.colorbar(imshow, ax=ax)
+                colorbar = pp.colorbar(fill_contour, ax=ax, spacing='uniform')
                 colorbar.ax.tick_params(labelsize=8)
-                ax.clabel(contour, inline=1, fontsize=8, fmt={
+
+                if fill_contour2 is not None:
+                    colorbar2 = pp.colorbar(
+                        fill_contour2, cax=colorbar.ax, spacing='uniform'
+                    )
+                    colorbar2.ax.tick_params(labelsize=8)
+
+                ax.clabel(line_contour, inline=1, fontsize=8, fmt={
                     percval: '%.2f (%d\\%%)' % (percval, perc)
                     for percval, perc in izip(percvals, percs)
                 })
@@ -374,42 +381,39 @@ def main():
     )
     args = parser.parse_args()
 
-    params = collections.OrderedDict(
-        r=dict(default=2.0, range=(1, 4)),
-        a=dict(default=1.0, range=(1, 4)),
-        c=dict(default=1.0, range=(1, 4)),
-        k=dict(default=0.5, range=(0.1, 0.9)),
-        mh=dict(default=0.25, range=(0, 0.5)),
-        mp=dict(default=0.25, range=(0, 0.5)),
-        Sh=dict(default=1, res=1),
-        Shh=dict(default=0.5, res=1),
-        Sp=dict(default=1, res=1),
-        Spp=dict(default=0.5, res=1)
-    )
+    params = collections.OrderedDict()
+    params['r'] = dict(default=2.0, range=(1.1, 4))
+    params['a'] = dict(default=1.0, res=1)
+    params['c'] = dict(default=1.0, res=1)
+    params['k'] = dict(default=0.5, range=(0.1, 0.9))
+    params['mh'] = dict(default=0.25, range=(0, 0.5))
+    params['mp'] = dict(default=0.25, range=(0, 0.5))
+    params['Sh'] = dict(default=1, range=(0, 2))
+    params['Sp'] = dict(default=1, range=(0, 2))
+    params['Chh'] = dict(default=0.5, range=(0, 1))
+    params['Cpp'] = dict(default=0.5, range=(0, 1))
 
-    phash = hash(json.dumps(dict_merge(params, vars(args))))
+    print params.keys()
+
+    phash = utilities.paramhash(dict_merge(params, vars(args)))
 
     for p in params.itervalues():
         p.setdefault('res', args.resolution)
         p.setdefault('range', (p['default'], p['default']))
         p['range'] = np.linspace(p['range'][0], p['range'][1], p['res'])
 
-    cachepath = 'cache/fraction-host-%d-%s.pickle' % (args.resolution, phash)
+    cacheprefix = 'cache/fraction-host-%d-%s' % (args.resolution, phash)
+    cachepath = '%s.pickle' % cacheprefix
     plotprefix = 'plots/fraction-host-%d-%s' % (args.resolution, phash)
 
     for dirname in [os.path.dirname(path) for path in [cachepath, plotprefix]]:
         if not os.path.exists(dirname):
             os.makedirs(dirname)
 
-    if not os.path.exists(cachepath):
-        print 'Computing %s with %d processes.' % (cachepath, args.poolcpus)
-        products = make_products(params=params, processes=args.poolcpus)
-
-        print 'Writing %s.' % cachepath
-        cPickle.dump(products, open(cachepath, 'w'))
-    else:
-        print 'Loading %s.' % cachepath
-        products = cPickle.load(open(cachepath))
+    print 'Computing %s with %d processes.' % (cachepath, args.poolcpus)
+    products = make_products(
+        params=params, processes=args.poolcpus, cacheprefix=cacheprefix
+    )
 
     metrics = {
         k: [
