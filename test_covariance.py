@@ -200,9 +200,7 @@ def plot_convergences(
 
 
 def main():
-    """
-    usage: python covariance_test.py {config.json, output.pickle}
-    """
+    """usage: python covariance_test.py {config.json, output.pickle}"""
 
     try:
         extension = os.path.splitext(sys.argv[1])[1]
