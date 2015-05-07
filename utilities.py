@@ -13,6 +13,22 @@ import numpy as np
 from numpy.lib.stride_tricks import as_strided as ast
 
 
+class NumpyAwareJSONEncoder(json.JSONEncoder):
+    """
+    https://stackoverflow.com/questions/3488934/simplejson-and-numpy-array
+    """
+
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return json.JSONEncoder.default(self, obj)
+
+
+def paramhash(params):
+    return hash(json.dumps(params, cls=NumpyAwareJSONEncoder))
+
+
 def decode_list(data):
     """
     Helper for opening JSON data with non-UTF-8 encoding. This recursively
