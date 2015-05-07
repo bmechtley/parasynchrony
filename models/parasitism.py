@@ -36,7 +36,9 @@ symbols = dict(
     Sh=sympy.Symbol(r'\Sigma_{H}'),
     Shh=sympy.Symbol(r'\Sigma_{HH}'),
     Sp=sympy.Symbol(r'\Sigma_{P}'),
-    Spp=sympy.Symbol(r'\Sigma_{PP}')
+    Spp=sympy.Symbol(r'\Sigma_{PP}'),
+    Chh=sympy.Symbol(r'\gamma_{HH}'),
+    Cpp=sympy.Symbol(r'\gamma_{PP}')
 )
 
 labels = dict(
@@ -54,7 +56,9 @@ labels = dict(
     Sh='host env. var.',
     Sp='parasitoid env. var.',
     Shh='host env. cov.',
-    Spp='parasitoid env. cov.'
+    Spp='parasitoid env. cov.',
+    Chh='host env. corr.',
+    Cpp='parasitoid env. corr.'
 )
 
 
