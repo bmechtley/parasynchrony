@@ -7,15 +7,16 @@ Reuman Lab, Kansas Biological Survey
 Some helper utilities for multivariate spectra.
 """
 
+import collections
 import itertools
 import warnings
+import json
 
 import numpy as np
 import sympy
 
 import scipy.signal
 import matplotlib.mlab as mlab
-import collections
 
 
 class CacheDict(collections.OrderedDict):
@@ -51,16 +52,16 @@ def correlation(x):
     """
 
     if np.any(np.isnan(x)):
-        warnings.warn(
+        warnings.warn(' '.join([
             'Input matrix contained NaN values. Returning NaN correlation',
             'matrix. Input parameters: %s.' % str(x)
-        )
+        ]))
 
         return np.full_like(x, np.nan)
     else:
-        x = np.matrix(x)
-        d = np.matrix(np.diag(x))
-        return x / np.array(d.T * d) ** (1. / 2)
+        d = np.dot(np.diag(x).T, np.diag(x)) ** .5
+        return np.where(d == 0, np.zeros_like(x), x / d)
+
 
 def solve_axatc(a, c):
     """
