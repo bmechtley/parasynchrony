@@ -17,8 +17,6 @@ class StochasticModel:
     and the dynamics are expressed as a SymPy Matrix object.
     """
 
-    # TODO: Peak magnitude?
-
     def __init__(self, symvars, noises, equation, cachesize=10000):
         """
         Initialize a model object.
@@ -170,7 +168,6 @@ class StochasticModel:
     def calculate_covariance(self, params, inputcov):
         """
         Calculate the covariance (autocovariance with lag zero) for the model.
-
         :param params (dict): parameter values with SymPy symbol keys.
         :param noise (np.array): covariance of the noise.
         :return: (np.array): covariance matrix.
@@ -185,11 +182,10 @@ class StochasticModel:
                 utilities.solve_axatc(a, np.dot(np.dot(b, inputcov),  b.T))
             )
         else:
-            warnings.warn('%s %s %s' % (
-                'A and/or B matrix contained inf or NaN values.',
-                'Returning NaN covariance matrix.',
-                'Input parameters: %s.' % str(params)
-            ))
+            warnings.warn(' '.join([
+                'A and/or B matrix contained inf or NaN values. Returning NaN',
+                'covariance matrix. Input parameters: %s.' % str(params)
+            ]))
             result = np.full_like(a, np.nan)
 
         return result
@@ -227,7 +223,6 @@ class StochasticModel:
     def simulate(self, initial, params, noise, timesteps=2**10):
         """
         Start from an initial point and simulate the model with sampled noise.
-
         :param initial: (list) Initial values for the state variables, ordered
             according to self.vars.
         :param params: (dict) free parameters to the model (excluding state/
@@ -250,9 +245,7 @@ class StochasticModel:
 
         # Use sympy.utilities.lambdify to set up a lambda function to quickly
         # evaluate the model at each timestep. Lamdify just evaluates a string
-        # of Python code, so first translate all variables into Python-friendly
-        # variable names by replacing any special LaTeX characters with
-        # underscores.
+        # of Python code, so first replace any special LaTeX characters with _.
         trans = string.maketrans(r'{}\()^*[]', r'_________')
         fixed_keys = [str(k).translate(trans) for k in param_keys]
         subs = dict(zip(param_keys, fixed_keys))
