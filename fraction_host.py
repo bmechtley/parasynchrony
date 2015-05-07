@@ -13,10 +13,11 @@ TODO: Try to find a reasonable bounding box over which to average these things.
 """
 
 import os
+import sys
 import time
+import glob
+import json
 import cPickle
-import argparse
-import collections
 import multiprocessing
 from itertools import combinations_with_replacement, izip
 
@@ -116,7 +117,7 @@ def process_products(opts):
     """
 
     params, cacheprefix, k1, k2 = opts
-    cachepath = '%s-%s.pickle' % (cacheprefix, utilities.paramhash(opts))
+    cachepath = '%s-%s-part.pickle' % (cacheprefix, utilities.paramhash(opts))
 
     varyingkeys = [k for k in params if params[k]['res'] > 1]
     defaults = {k: v['default'] for k, v in params.iteritems()}
@@ -139,8 +140,7 @@ def process_products(opts):
 
         fracsync = lambda a, b: fraction_synchrony(dict(
             num=dict_merge(defaults, {
-                k1: a,
-                k2: b,
+                k1: a, k2: b,
                 'Spp': 0, 'mp': 0, 'Cpp': 0
             }),
             den=dict_merge(defaults, {k1: a, k2: b})
@@ -170,9 +170,7 @@ def process_products(opts):
 
 
 def make_products(
-        params=None,
-        processes=multiprocessing.cpu_count(),
-        cacheprefix=''
+        params=None, processes=multiprocessing.cpu_count(), cacheprefix=''
 ):
     """
     Compute fraction of synchrony metrics across combinations of values for each
@@ -189,24 +187,28 @@ def make_products(
     """
 
     varyingkeys = [k for k in params if params[k]['res'] > 1]
-    print 'Varying keys:', varyingkeys
-
     keyproduct = list(combinations_with_replacement(varyingkeys, 2))
-
-    btime = time.clock()
 
     # Returns an array of dictionaries, each containing a two-dimensional array
     # with the different metrics returned by fraction_synchrony across the
     # combination of each pair of varying parameters.
-    products = multipool(
-        process_products,
-        [(params, cacheprefix) + ks for ks in keyproduct],
-        processes=processes
-    )
-
-    print 'Finished computing correlation ratios (%.3fs).' % (
-        time.clock() - btime
-    )
+    cachepath = '%s-products.pickle' % cacheprefix
+    if not os.path.exists(cachepath):
+        print 'Computing with %d processes.' % processes
+        btime = time.clock()
+        products = multipool(
+            process_products,
+            [(params, cacheprefix) + ks for ks in keyproduct],
+            processes=processes
+        )
+        print 'Finished computing ratios (%.3fs).' % (time.clock() - btime)
+        cPickle.dump(products, open(cachepath, 'w'))
+        print 'Saved %s.' % cachepath
+        for d in glob.glob('%s-*-part.pickle' % cacheprefix):
+            os.remove(d)
+    else:
+        print 'Loading %s.' % cachepath
+        products = cPickle.load(open(cachepath, 'r'))
 
     # Restructure so we have a dictionary with fraction_synchrony metrics as
     # keys and lists of two-dimensional arrays of their values across the
@@ -364,55 +366,24 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Fraction of synchrony in host due to host effects.'
-    )
-    parser.add_argument(
-        '-np', '--poolcpus',
-        type=int,
-        default=multiprocessing.cpu_count() - 1,
-        help='how many processes to run concurrently'
-    )
-    parser.add_argument(
-        '-r', '--resolution',
-        type=int,
-        default=10,
-        help='number of steps in each dimension'
-    )
-    args = parser.parse_args()
+    configpath = sys.argv[1]
+    configdir, configfile = os.path.split(configpath)
+    configname = os.path.splitext(configfile)[0]
+    config = json.load(configpath)
 
-    params = collections.OrderedDict()
-    params['r'] = dict(default=2.0, range=(1.1, 4))
-    params['a'] = dict(default=1.0, res=1)
-    params['c'] = dict(default=1.0, res=1)
-    params['k'] = dict(default=0.5, range=(0.1, 0.9))
-    params['mh'] = dict(default=0.25, range=(0, 0.5))
-    params['mp'] = dict(default=0.25, range=(0, 0.5))
-    params['Sh'] = dict(default=1, range=(0, 2))
-    params['Sp'] = dict(default=1, range=(0, 2))
-    params['Chh'] = dict(default=0.5, range=(0, 1))
-    params['Cpp'] = dict(default=0.5, range=(0, 1))
-
-    print params.keys()
-
-    phash = utilities.paramhash(dict_merge(params, vars(args)))
+    args, params = config['args'], config['params']
 
     for p in params.itervalues():
-        p.setdefault('res', args.resolution)
+        p.setdefault('res', args['resolution'])
         p.setdefault('range', (p['default'], p['default']))
-        p['range'] = np.linspace(p['range'][0], p['range'][1], p['res'])
+        p['range'] = np.linspace(
+            p['range'][0], p['range'][1], args['resolution']
+        )
 
-    cacheprefix = 'cache/fraction-host-%d-%s' % (args.resolution, phash)
-    cachepath = '%s.pickle' % cacheprefix
-    plotprefix = 'plots/fraction-host-%d-%s' % (args.resolution, phash)
-
-    for dirname in [os.path.dirname(path) for path in [cachepath, plotprefix]]:
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-
-    print 'Computing %s with %d processes.' % (cachepath, args.poolcpus)
     products = make_products(
-        params=params, processes=args.poolcpus, cacheprefix=cacheprefix
+        params=params,
+        processes=args['processes'],
+        cacheprefix=os.path.join(configdir, configname)
     )
 
     metrics = {
@@ -425,7 +396,7 @@ def main():
 
     for k, v in metrics.iteritems():
         if k != 'time':
-            plotpath = '%s-%s.png' % (plotprefix, k)
+            plotpath = os.path.join(configdir, '%s-%s.png' % (configname, k))
             print 'Plotting %s.' % plotpath
             plot_fracsync(params, v, plotpath, k)
 
