@@ -8,9 +8,13 @@ Various utility helper functions shared between the different analysis scripts.
 """
 
 import json
-import pybatchdict
+import itertools
+import multiprocessing
+
 import numpy as np
 from numpy.lib.stride_tricks import as_strided as ast
+
+import pybatchdict
 
 
 class NumpyAwareJSONEncoder(json.JSONEncoder):
@@ -25,8 +29,65 @@ class NumpyAwareJSONEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
 
 
+def multipool(
+        mapfun,
+        mapdata,
+        processes=multiprocessing.cpu_count(),
+        timeout=99999,
+        **pargs
+):
+    if processes == 1:
+        return map(mapfun, mapdata)
+    else:
+        return multiprocessing.Pool(processes=processes).map_async(
+            mapfun, mapdata, **pargs
+        ).get(timeout)
+
+
+def imultipool(
+        mapfun,
+        mapdataiter,
+        processes=multiprocessing.cpu_count(),
+        timeout=99999,
+        **pargs
+):
+    if processes == 1:
+        return itertools.imap(mapfun, mapdataiter)
+    else:
+        return multiprocessing.Pool(processes=processes).imap(
+            mapfun, mapdataiter, **pargs
+        ).get(timeout)
+
+
 def paramhash(params):
     return hash(json.dumps(params, cls=NumpyAwareJSONEncoder))
+
+
+def dict_merge(a, b):
+    """
+    Merge two dictionaries, preferring the values from the second in case of
+    collision.
+
+    :param a: first dictionary
+    :param b: second dictionary
+    :return: new dictionary containing keys and values from both dictionaries.
+    """
+
+    c = a.copy()
+    c.update(b)
+    return c
+
+
+def dict_split(d, keys):
+    return {
+        k: v for k, v in d.iteritems() if k not in keys
+    }, {
+        k: v for k, v in d.iterimes() if d in keys
+    }
+
+
+def dict_unpack(d, keys):
+    return tuple([d[k] for k in keys])
 
 
 def decode_list(data):
