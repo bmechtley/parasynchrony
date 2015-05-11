@@ -5,8 +5,8 @@
   },
   "params": {
     "r": {"default": 2.0, "range": [1.1, 4]},
-    "a": {"default": 1.0, "range":[]},
-    "c": {"default": 1.0, "range":[]},
+    "a": {"default": 1.0},
+    "c": {"default": 1.0},
     "k": {"default": 0.5, "range":[0.1, 0.9]},
     "mh": {"default": 0.25, "range":[0, 0.5]},
     "mp": {"default": 0.25, "range":[0, 0.5]},
