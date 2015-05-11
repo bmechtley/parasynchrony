@@ -31,20 +31,6 @@ import utilities
 
 model = models.parasitism.get_model('nbd(2)')
 
-def multipool(
-        mapfun,
-        mapdata,
-        processes=multiprocessing.cpu_count(),
-        timeout=99999,
-        **pargs
-):
-    if processes == 1:
-        return map(mapfun, mapdata)
-    else:
-        return multiprocessing.Pool(processes=processes).map_async(
-            mapfun, mapdata, **pargs
-        ).get(timeout)
-
     
 def fraction_synchrony(params):
     """
@@ -86,21 +72,6 @@ def fraction_synchrony(params):
     return correlations
 
 
-def dict_merge(a, b):
-    """
-    Merge two dictionaries, preferring the values from the second in case of
-    collision.
-
-    :param a: first dictionary
-    :param b: second dictionary
-    :return: new dictionary containing keys and values from both dictionaries.
-    """
-
-    c = a.copy()
-    c.update(b)
-    return c
-
-
 def process_products(opts):
     """
     Parallel worker for computing fraction of average synchrony. Used by
@@ -139,11 +110,11 @@ def process_products(opts):
         btime = time.clock()
 
         fracsync = lambda a, b: fraction_synchrony(dict(
-            num=dict_merge(defaults, {
+            num=utilities.dict_merge(defaults, {
                 k1: a, k2: b,
                 'Spp': 0, 'mp': 0, 'Cpp': 0
             }),
-            den=dict_merge(defaults, {k1: a, k2: b})
+            den=utilities.dict_merge(defaults, {k1: a, k2: b})
         ))
 
         if k1 != k2:
@@ -196,7 +167,7 @@ def make_products(
     if not os.path.exists(cachepath):
         print 'Computing with %d processes.' % processes
         btime = time.clock()
-        products = multipool(
+        products = utilities.multipool(
             process_products,
             [(params, cacheprefix) + ks for ks in keyproduct],
             processes=processes
