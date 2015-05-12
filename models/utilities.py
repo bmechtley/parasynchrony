@@ -59,7 +59,7 @@ def correlation(x):
 
         return np.full_like(x, np.nan)
     else:
-        d = np.dot(np.diag(x).T, np.diag(x)) ** .5
+        d = np.outer(np.diag(x), np.diag(x)) ** .5
         return np.where(d == 0, np.zeros_like(x), x / d)
 
 
