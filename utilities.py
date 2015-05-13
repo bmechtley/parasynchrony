@@ -82,7 +82,7 @@ def dict_split(d, keys):
     return {
         k: v for k, v in d.iteritems() if k not in keys
     }, {
-        k: v for k, v in d.iterimes() if d in keys
+        k: v for k, v in d.iteritems() if k in keys
     }
 
 
