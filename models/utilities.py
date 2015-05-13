@@ -10,7 +10,6 @@ Some helper utilities for multivariate spectra.
 import collections
 import itertools
 import warnings
-import json
 
 import numpy as np
 import sympy
@@ -18,12 +17,10 @@ import sympy
 import scipy.signal
 import matplotlib.mlab as mlab
 
-
 class CacheDict(collections.OrderedDict):
     """
     Size-limited dictionary for caching results. See:
-    http://stackoverflow.com/questions/2437617/
-        limiting-the-size-of-a-python-dictionary
+    stackoverflow.com/questions/2437617/limiting-the-size-of-a-python-dictionary
     """
 
     def __init__(self, *args, **kwargs):
@@ -41,7 +38,6 @@ class CacheDict(collections.OrderedDict):
         if self.size_limit is not None:
             while len(self) > self.size_limit:
                 self.popitem(last=False)
-
 
 def correlation(x):
     """
@@ -61,7 +57,6 @@ def correlation(x):
     else:
         d = np.outer(np.diag(x), np.diag(x)) ** .5
         return np.where(d == 0, np.zeros_like(x), x / d)
-
 
 def solve_axatc(a, c):
     """
@@ -85,7 +80,6 @@ def solve_axatc(a, c):
 
     return evecs * x_tilde * evecs.getH()
 
-
 def smooth_phasors(x, magargs=None, phasorargs=None):
     """
     Smooth complex valued input by using separate smoothing kernels for
@@ -102,7 +96,6 @@ def smooth_phasors(x, magargs=None, phasorargs=None):
         smooth(abs(x), **magargs),
         np.angle(smooth(x / abs(x), **phasorargs))
     )
-
 
 def smooth(x, window='boxcar', p=0.5, q=0.5):
     """
@@ -136,7 +129,6 @@ def smooth(x, window='boxcar', p=0.5, q=0.5):
         return scipy.signal.convolve(s, win / sum(win), mode='valid')
     else:
         return scipy.signal.medfilt(x, (L,))
-
 
 def spectrum(series, **csdargs):
     """
@@ -172,7 +164,6 @@ def spectrum(series, **csdargs):
         sxy[i, j] = sxy[i, j] = spec[:, 0] / 2
 
     return freqs, sxy
-
 
 def eval_matrix(m):
     """
