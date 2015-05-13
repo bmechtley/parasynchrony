@@ -15,56 +15,55 @@ import sys
 import sympy
 import stochastic
 
-symbols = dict(
-    a=sympy.Symbol('a', positive=True),
-    r=sympy.Symbol('\lambda', positive=True),
-    c=sympy.Symbol('c', positive=True),
-    k=sympy.Symbol('k', positive=True),
-    mh=sympy.Symbol('\mu_H', positive=True),
-    mp=sympy.Symbol('\mu_P', positive=True),
-    h=[sympy.Symbol('H')] + list(sympy.symbols('H^{((1:3))}')),
-    p=[sympy.Symbol('P')] + list(sympy.symbols('P^{((1:3))}')),
-    eh=[sympy.Symbol('\epsilon_h')] + list(
-        sympy.symbols('\epsilon^{((1:3))}_h')
-    ),
-    ep=[sympy.Symbol('\epsilon_p')] + list(
-        sympy.symbols('\epsilon^{((1:3))}_p')
-    ),
-    alpha=sympy.Symbol(r'\alpha'),
-    x=sympy.Symbol('x'),
-    e=sympy.Symbol(r'\epsilon'),
-    Sh=sympy.Symbol(r'\Sigma_{H}'),
-    Shh=sympy.Symbol(r'\Sigma_{HH}'),
-    Sp=sympy.Symbol(r'\Sigma_{P}'),
-    Spp=sympy.Symbol(r'\Sigma_{PP}'),
-    Chh=sympy.Symbol(r'\gamma_{HH}'),
-    Cpp=sympy.Symbol(r'\gamma_{PP}')
-)
+def make_globals():
+    return dict(
+        a=sympy.Symbol('a', positive=True),
+        r=sympy.Symbol('\lambda', positive=True),
+        c=sympy.Symbol('c', positive=True),
+        k=sympy.Symbol('k', positive=True),
+        mh=sympy.Symbol('\mu_H', positive=True),
+        mp=sympy.Symbol('\mu_P', positive=True),
+        h=[sympy.Symbol('H')] + list(sympy.symbols('H^{((1:3))}')),
+        p=[sympy.Symbol('P')] + list(sympy.symbols('P^{((1:3))}')),
+        eh=[sympy.Symbol('\epsilon_h')] + list(
+            sympy.symbols('\epsilon^{((1:3))}_h')
+        ),
+        ep=[sympy.Symbol('\epsilon_p')] + list(
+            sympy.symbols('\epsilon^{((1:3))}_p')
+        ),
+        alpha=sympy.Symbol(r'\alpha'),
+        x=sympy.Symbol('x'),
+        e=sympy.Symbol(r'\epsilon'),
+        Sh=sympy.Symbol(r'\Sigma_{H}'),
+        Shh=sympy.Symbol(r'\Sigma_{HH}'),
+        Sp=sympy.Symbol(r'\Sigma_{P}'),
+        Spp=sympy.Symbol(r'\Sigma_{PP}'),
+        Chh=sympy.Symbol(r'\gamma_{HH}'),
+        Cpp=sympy.Symbol(r'\gamma_{PP}')
+    ), dict(
+        h=['host population in patch %d' % (i + 1) for i in range(3)],
+        p=['parasitoid population in patch %d' % (i + 1) for i in range(3)],
+        eh=['env. noise on host in patch %d' % (i + 1) for i in range(3)],
+        ep=['env. noise on host in patch %d' % (i + 1) for i in range(3)],
+        e='environmental noise',
+        r='host reproduction rate',
+        a='parasitoid attack range',
+        c='eggs / parasitized host',
+        k='host clumping',
+        mh='host migration',
+        mp='parasitoid migration',
+        Sh='host env. var.',
+        Sp='parasitoid env. var.',
+        Shh='host env. cov.',
+        Spp='parasitoid env. cov.',
+        Chh='host env. corr.',
+        Cpp='parasitoid env. corr.'
+    )
 
-labels = dict(
-    h=['host population in patch %d' % (i + 1) for i in range(3)],
-    p=['parasitoid population in patch %d' % (i + 1) for i in range(3)],
-    eh=['env. noise on host in patch %d' % (i + 1) for i in range(3)],
-    ep=['env. noise on host in patch %d' % (i + 1) for i in range(3)],
-    e='environmental noise',
-    r='host reproduction rate',
-    a='parasitoid attack range',
-    c='eggs / parasitized host',
-    k='host clumping',
-    mh='host migration',
-    mp='parasitoid migration',
-    Sh='host env. var.',
-    Sp='parasitoid env. var.',
-    Shh='host env. cov.',
-    Spp='parasitoid env. cov.',
-    Chh='host env. corr.',
-    Cpp='parasitoid env. corr.'
-)
-
+symbols, labels = make_globals()
 
 def sym_params(params):
     return {symbols[k]: v for k, v in params.iteritems()}
-
 
 def ar1():
     """
@@ -74,8 +73,7 @@ def ar1():
     """
 
     a, x, e = [symbols[v] for v in ['alpha', 'x', 'e']]
-    return stochastic.StochasticModel([x], [e], [a * x + e])
-
+    return stochastic.StochasticModel([x], [e], [a * x + e], (a, e))
 
 def nb():
     """
@@ -85,9 +83,9 @@ def nb():
         P_t = c H_{t-1} (1 - exp(-a P_{t-1})) exp(e_P)
     :return: StochasticModel for Nicholson-Bailey process.
     """
-    h, p, eh, ep, r, a, c = [symbols[v] for v in [
-        'h', 'p', 'eh', 'ep', 'r', 'a', 'c'
-    ]]
+    h, p, eh, ep, r, a, c = [
+        symbols[v] for v in ['h', 'p', 'eh', 'ep', 'r', 'a', 'c']
+    ]
 
     return stochastic.StochasticModel(
         [h[0], p[0]],
@@ -95,9 +93,9 @@ def nb():
         [
             r * h[0] * sympy.exp(-a * p[0]) * sympy.exp(eh[0]),
             c * h[0] * (1 - sympy.exp(-a * p[0])) * sympy.exp(ep[0])
-        ]
+        ],
+        (r, a, c)
     )
-
 
 def nbd():
     """
@@ -108,9 +106,10 @@ def nbd():
     :return: StochasticModel for Nicholson-Bailey process with negative
         binomial functional response.
     """
-    h, p, eh, ep, r, a, c, k = [symbols[v] for v in [
-        'h', 'p', 'eh', 'ep', 'r', 'a', 'c', 'k'
-    ]]
+
+    h, p, eh, ep, r, a, c, k = [
+        symbols[v] for v in ['h', 'p', 'eh', 'ep', 'r', 'a', 'c', 'k']
+    ]
 
     return stochastic.StochasticModel(
         [h[0], p[0]],
@@ -118,9 +117,9 @@ def nbd():
         [
             r * h[0] * (1 + a * p[0] / k) ** -k * sympy.exp(eh[0]),
             c * h[0] * (1 - (1 + a * p[0] / k) ** -k) * sympy.exp(ep[0])
-        ]
+        ],
+        (r, a, c, k)
     )
-
 
 def get_model(modelstr):
     """
@@ -180,7 +179,7 @@ def get_model(modelstr):
                     m = mh if row < npatches else mp
 
                     if row == col:
-                        migrationmat[row, col] = 1-m
+                        migrationmat[row, col] = 1 - m
                     elif row < npatches and col < npatches:
                         # Host migration.
                         migrationmat[row, col] = m / npatches
@@ -194,10 +193,10 @@ def get_model(modelstr):
             item for sublist in [
                 [
                     refmodel.stochastic[i].subs({
-                        h[0]: h[j+1],
-                        p[0]: p[j+1],
-                        eh[0]: eh[j+1],
-                        ep[0]: ep[j+1]
+                        h[0]: h[j + 1],
+                        p[0]: p[j + 1],
+                        eh[0]: eh[j + 1],
+                        ep[0]: ep[j + 1]
                     }) for j in patches
                 ] for i in range(2)
             ] for item in sublist
@@ -205,9 +204,10 @@ def get_model(modelstr):
 
         # Create the model.
         multipatch = stochastic.StochasticModel(
-            [h[i+1] for i in patches] + [p[i+1] for i in patches],
-            [eh[i+1] for i in patches] + [ep[i+1] for i in patches],
-            migrationmat * equations
+            [h[i + 1] for i in patches] + [p[i + 1] for i in patches],
+            [eh[i + 1] for i in patches] + [ep[i + 1] for i in patches],
+            migrationmat * equations,
+            (r, a, c, k, mh, mp)
         )
 
         # Solve for the equilibrium. Assuming global dispersal, the
@@ -216,11 +216,11 @@ def get_model(modelstr):
 
         if refmodel.equilibrium is not None:
             multipatch.equilibrium = {
-                h[i+1]: refmodel.equilibrium[h[0]] for i in patches
+                h[i + 1]: refmodel.equilibrium[h[0]] for i in patches
             }
 
             multipatch.equilibrium.update({
-                p[i+1]: refmodel.equilibrium[p[0]] for i in patches
+                p[i + 1]: refmodel.equilibrium[p[0]] for i in patches
             })
 
         # Linearize the model.

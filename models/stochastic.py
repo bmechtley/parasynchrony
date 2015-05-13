@@ -17,7 +17,7 @@ class StochasticModel:
     and the dynamics are expressed as a SymPy Matrix object.
     """
 
-    def __init__(self, symvars, noises, equation, cachesize=10000):
+    def __init__(self, symvars, noises, equation, allvars, cachesize=10000):
         """
         Initialize a model object.
         :param symvars: list of SymPy symbols representing state variables.
@@ -26,6 +26,7 @@ class StochasticModel:
             variables. X_t+1 = F(X_t)
         """
 
+        self.allvars = allvars
         self.vars = sympy.Matrix(symvars)
         self.noises = sympy.Matrix(noises)
         self.stochastic = sympy.Matrix(equation)
@@ -39,6 +40,12 @@ class StochasticModel:
 
         self.simulated = None
         self.simulated_linear = None
+
+        # If lambdify_ss is set to True, get_cached_matrices will first convert
+        # (and cache) the state space matrices as lambda functions, rather than
+        # using sympy's matrix evaluation function.
+        self.lambdify_ss = False
+        self.lambdas = dict()
 
         # Cache for matrices evaluated for certain parameters. The cache is
         # indexed by a hash of the dictionary of parameters.
@@ -78,6 +85,27 @@ class StochasticModel:
         self.A = self.deterministic.jacobian(self.vars).subs(subs)
         self.B = self.stochastic.jacobian(self.noises).subs(subs)
 
+    def lambdify(self, var, key, params):
+        # Make sure the keys in params are ordered as they are in allvars, so
+        # that consecutive calls to cached lambdified matrices will have the
+        # same argument ordering.
+        param_keys = [k for k in self.allvars if k in params]
+        param_vals = [params[k] for k in param_keys]
+
+        if key not in self.lambdas:
+            # Use sympy.utilities.lambdify to set up a lambda function to
+            # quickly evaluate the model at each timestep. Lamdify just
+            # evaluates a string of Python code, so first replace any special
+            # LaTeX characters with _.
+            trans = string.maketrans(r'{}\()^*[]', r'_________')
+            fixed_keys = [str(k).translate(trans) for k in param_keys]
+            subs = dict(zip(param_keys, fixed_keys))
+            self.lambdas[key] = sympy.utilities.lambdify(
+                fixed_keys, var.subs(subs)
+            )
+
+        return self.lambdas[key](*param_vals)
+
     def get_cached_matrices(self, params):
         """
         Cache m1/q0 matrices for the given parameter values to avoid
@@ -100,10 +128,16 @@ class StochasticModel:
         cached = self.cache[phash]
 
         if 'A' not in cached:
-            cached['A'] = utilities.eval_matrix(self.A.subs(params))
+            if self.lambdify_ss:
+                cached['A'] = self.lambdify(self.A, 'A', params)
+            else:
+                cached['A'] = utilities.eval_matrix(self.A.subs(params))
 
         if 'B' not in cached:
-            cached['B'] = utilities.eval_matrix(self.B.subs(params))
+            if self.lambdify_ss:
+                cached['B'] = self.lambdify(self.B, 'B', params)
+            else:
+                cached['B'] = utilities.eval_matrix(self.B.subs(params))
 
         return cached
 
