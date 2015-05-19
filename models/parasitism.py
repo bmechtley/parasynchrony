@@ -39,7 +39,8 @@ def make_globals():
         Sp=sympy.Symbol(r'\Sigma_{P}'),
         Spp=sympy.Symbol(r'\Sigma_{PP}'),
         Chh=sympy.Symbol(r'\gamma_{HH}'),
-        Cpp=sympy.Symbol(r'\gamma_{PP}')
+        Cpp=sympy.Symbol(r'\gamma_{PP}'),
+        SpSh=sympy.Symbol(r'\frac{\Sigma_P}{\Sigma_H}')
     ), dict(
         h=['host population in patch %d' % (i + 1) for i in range(3)],
         p=['parasitoid population in patch %d' % (i + 1) for i in range(3)],
@@ -57,7 +58,8 @@ def make_globals():
         Shh='host env. cov.',
         Spp='parasitoid env. cov.',
         Chh='host env. corr.',
-        Cpp='parasitoid env. corr.'
+        Cpp='parasitoid env. corr.',
+        SpSh='parasitoid env. var. gain over host'
     )
 
 symbols, labels = make_globals()
