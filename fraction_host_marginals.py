@@ -23,6 +23,7 @@ import itertools
 import multiprocessing
 
 import numpy as np
+import matplotlib.colors
 import matplotlib.pyplot as pp
 
 import models
@@ -257,16 +258,24 @@ def plot_marginals(products, plotpath):
 
     for i, (key, marginal) in enumerate(marginals.iteritems()):
         param = config['params'][key]
-        xs, ys = np.meshgrid(halfshift(param['range']), halfshift(bins))
         pp.subplot(nparams, 1, i + 1)
-        pp.pcolormesh(xs, ys, marginal['h']['Rhh'].T, cmap='cubehelix')
-        pp.xlabel(key)
+
+        # Halfshift makes the bins centered at (not straddling) the ticks.
+        xs, ys = np.meshgrid(halfshift(param['range']), halfshift(bins))
+        zs = marginal['h']['Rhh'].T
+        norm = matplotlib.colors.LogNorm(
+            vmin=np.amin(zs[zs != 0]),
+            vmax=np.amax(zs)
+        )
+        pp.pcolormesh(xs, ys, zs, norm=norm)
+
+        pp.xlabel('$%s$' % models.parasitism.symbols[key])
         pp.ylabel('$R_{hh}$')
         pp.xlim(xs[0, 0], xs[0, -1])
         pp.ylim(ys[0, 0], ys[-1, 0])
+
+        pp.colorbar()
         pp.xticks(param['range'], ['%.2f' % p for p in param['range']])
-        bticks = [bins[0]] + list(bins)[1::10]
-        pp.yticks(bticks, ['%.2f' % p for p in bticks])
 
     pp.subplots_adjust(top=0.975, bottom=0.025)
     pp.savefig(plotpath)
