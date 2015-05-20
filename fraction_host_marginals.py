@@ -134,9 +134,9 @@ def compute_marginal(opts):
                             (len(varparams) + 1, len(ranges[0]), bres)
                         )
 
-                    index_y = int(
-                        np.interp(mval, [bmin, bmax], [0, bres - 1])
-                    )
+                    index_y = int(np.interp(
+                        mval, [bmin, bmax], [0, bres - 1], right=np.nan
+                    ))
 
                     try:
                         counts[modeltype][metric][0, vind, index_y] += 1
@@ -189,6 +189,10 @@ def make_products(config, cacheprefix=''):
         pivotvar = varkeys[0]
         indices = np.arange(len(varparams[pivotvar]['range']))
 
+        # This processes all the binning by computing each different "pivot"
+        # variable in a separate process. TODO: Allow for better parallelism,
+        # as this is only going to allow for a number of processes equal to the
+        # number of parameters.
         results = utilities.multipool(
             compute_marginal,
             [
@@ -205,29 +209,25 @@ def make_products(config, cacheprefix=''):
             processes=config['args']['processes']
         )
 
-        # Sum up results. Each result is a dict:
-        # modeltype->metric->(nvars, res, bins) array
-        summed = dict()
-        for key in results[0].keys():
-            summed[key] = dict()
-            for key2 in results[0][key]:
-                summed[key][key2] = np.sum([r[key][key2] for r in results], axis=0)
-
-        # Now summed is a dict modeltype->metric->(nvars, res, bins), so
-        # split it up so it is a dict varkey->modeltype->metric->(res, bins)
-        marginals = dict()
-        for vi, varkey in enumerate(varkeys):
-            marginals[varkey] = dict()
-            for modeltype in summed.keys():
-                marginals[varkey][modeltype] = dict()
-                for metric in summed[modeltype].keys():
-                    marginals[varkey][modeltype][metric] = summed[modeltype][metric][vi]
+        # Make a dict modeltype->metric->(nvars, res, bins) and split it up so
+        # it is a dict varkey->modeltype->metric->(res, bins)
+        marginals = {
+            varkey: {
+                mtkey: {
+                    metrickey: metricitem[vi]
+                    for metrickey, metricitem in mtvalue.iteritems()
+                } for mtkey, mtvalue in {
+                    k1: {
+                        k2: np.sum([r[k1][k2] for r in results], axis=0)
+                        for k2 in results[0][k1]
+                    }
+                    for k1 in results[0]
+                }.iteritems()
+            } for vi, varkey in enumerate(varkeys)
+        }
 
         # And now hope it all worked.
-        products = dict(
-            marginals=marginals,
-            config=config
-        )
+        products = dict(marginals=marginals, config=config)
 
         print tabs(4), 'Finished computing metrics (%.3fs).' % since(tic)
         cPickle.dump(products, open(cachepath, 'w'))
@@ -248,34 +248,37 @@ def plot_marginals(products, plotpath):
 
     marginals = products['marginals']
     config = products['config']
-
     hist = config['args']['histogram']
     bins = np.linspace(hist['min'], hist['max'], hist['res'])
 
     nparams = len(marginals)
+    npx = int(nparams ** 0.5)
+    npy = (nparams + 1) / npx
 
-    pp.figure(figsize=(10, 10 * nparams))
+    pp.figure(figsize=(npx * 7, npy * 5))
 
     for i, (key, marginal) in enumerate(marginals.iteritems()):
         param = config['params'][key]
-        pp.subplot(nparams, 1, i + 1)
+        pp.subplot(npy, npx, i + 1)
 
-        # Halfshift makes the bins centered at (not straddling) the ticks.
-        xs, ys = np.meshgrid(halfshift(param['range']), halfshift(bins))
+        # Contour plot of 2D histogram.
         zs = marginal['h']['Rhh'].T
-        norm = matplotlib.colors.LogNorm(
-            vmin=np.amin(zs[zs != 0]),
-            vmax=np.amax(zs)
+        vmin, vmax = np.amin(zs[zs != 0]), np.amax(zs)
+        vlogmin, vlogmax = np.log10(vmin), np.log10(vmax)
+        pp.contourf(
+            param['range'], bins, zs,
+            norm=matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax),
+            levels=10**np.linspace(vlogmin, vlogmax, 256)
         )
-        pp.pcolormesh(xs, ys, zs, norm=norm)
 
         pp.xlabel('$%s$' % models.parasitism.symbols[key])
         pp.ylabel('$R_{hh}$')
-        pp.xlim(xs[0, 0], xs[0, -1])
-        pp.ylim(ys[0, 0], ys[-1, 0])
-
-        pp.colorbar()
+        pp.xlim(np.amin(param['range']), np.amax(param['range']))
+        pp.ylim(np.amin(bins), np.amax(bins))
         pp.xticks(param['range'], ['%.2f' % p for p in param['range']])
+
+        cb = pp.colorbar(ticks=10**np.arange(int(vlogmin), int(vlogmax) + 1))
+        cb.set_label(r'\# samples')
 
     pp.subplots_adjust(top=0.975, bottom=0.025)
     pp.savefig(plotpath)
