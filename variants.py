@@ -9,13 +9,13 @@ pybatchdict JSON config file.
 """
 
 import sys
-import json
 import os.path
 import itertools
 
 import numpy as np
 
 import matplotlib
+
 matplotlib.rc('text', usetex=True)
 matplotlib.rc('font', size=6)
 matplotlib.rc('lines', linewidth=0.5)
