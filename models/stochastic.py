@@ -17,7 +17,7 @@ class StochasticModel:
     and the dynamics are expressed as a SymPy Matrix object.
     """
 
-    def __init__(self, symvars, noises, equation, allvars, cachesize=10000):
+    def __init__(self, symvars, noises, equation, allvars=[], cachesize=10000):
         """
         Initialize a model object.
         :param symvars: list of SymPy symbols representing state variables.
