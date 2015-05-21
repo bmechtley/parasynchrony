@@ -1,18 +1,18 @@
 {
   "args": {
-    "resolution": 2,
-    "processes": 1,
-    "histogram": {"min": 0, "max": 10.0, "res": 100}
+    "resolution": 5,
+    "processes": 3,
+    "plot": false
   },
   "params": {
     "r": {"default": 2.0, "range": [1.1, 4]},
     "a": {"default": 1.0},
     "c": {"default": 1.0},
-    "k": {"default": 0.5, "range": [0.1, 0.9]},
-    "mh": {"default": 0.25, "range": [0, 0.5]},
-    "mp": {"default": 0.25, "range": [0, 0.5]},
-    "SpSh": {"default": 1.0, "range": [0, 10]},
-    "Chh": {"default": 0.5, "range": [0, 1]},
-    "Cpp": {"default": 0.5, "range": [0, 1]}
+    "k": {"default": 0.5, "range":[0.1, 0.9]},
+    "mh": {"default": 0.25, "range":[0, 0.5]},
+    "mp": {"default": 0.25, "range":[0, 0.5]},
+    "SpSh": {"default": 1, "range":[0, 2]},
+    "Chh": {"default": 0.5, "range":[0, 1]},
+    "Cpp": {"default": 0.5, "range":[0, 1]}
   }
 }

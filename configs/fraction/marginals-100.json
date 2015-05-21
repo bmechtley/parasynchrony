@@ -1,7 +1,8 @@
 {
   "args": {
     "resolution": 100,
-    "processes": 3
+    "processes": 3,
+    "plot": false
   },
   "params": {
     "r": {"default": 2.0, "range": [1.1, 4]},
