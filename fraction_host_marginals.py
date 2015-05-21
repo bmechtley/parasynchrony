@@ -134,6 +134,12 @@ def compute_marginal(opts):
                             (len(varparams) + 1, len(ranges[0]), bres)
                         )
 
+                    # TODO: Note: values outside the maximum fraction of
+                    # TODO:     synchrony bin (e.g. 10) will be ignored, given
+                    # TODO:     NaN values. It may be appropriate to instead
+                    # TODO:     stick these in an "overflow" bin or choose a
+                    # TODO:     different value.
+
                     index_y = int(np.interp(
                         mval, [bmin, bmax], [0, bres - 1], right=np.nan
                     ))
@@ -312,9 +318,6 @@ def main():
 
         configdir, configname = 'cache/', 'fraction-host-marginals-default'
 
-    # TODO: Plot marginals.
-    # TODO: Saner binning strategy? All values are clustered at the extremes.
-
     ncpus, res = config['args']['processes'], config['args']['resolution']
 
     for p in config['params'].itervalues():
@@ -327,7 +330,9 @@ def main():
             p['range'] = [p['default']]
 
     products = make_products(config, os.path.join(configdir, configname))
-    plot_marginals(products, os.path.join('plots', '%s.png' % configname))
+
+    if config.get('args', {}).get('plot', False):
+        plot_marginals(products, os.path.join('plots', '%s.png' % configname))
 
 if __name__ == '__main__':
     main()
