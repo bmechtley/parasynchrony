@@ -1,14 +1,37 @@
 """
-fraction_host_marginals.py
+marginals_bivariate.py
 parasynchrony
 2015 Brandon Mechtley
 Reuman Lab, Kansas Biological Survey
 
-Compute marginal distribution of fraction of synchrony values across the entire
-parameter space, including noise parameters.
+Usage: python marginals_bivariate.py configname.json
+    configname.json: configuration file describing model parameters and ranges,
+        computation resolution, number of processes used, and plotting
+        preferences.
 
-TODO: Needs some major cleaning up to make this readable re: how the marginals
-are organized after processing.
+Produces intermediate cached pickle files in the same path as the config
+file, defaulting to cache/. Saves a plot in plots/configname.png.
+
+The input configuration JSON should be formatted as follows:
+{
+    "args": {
+        "resolution": /* number of parameter values for each parameter */,
+        "processes": /* number of processes to use for parallel computation */,
+        "histogram": {
+            "min": /* minimum fraction of synchrony to bin */,
+            "max": /* maximum fraction of synchrony to bin */,
+            "res": /* number of histogram bins */
+        },
+    }
+    "params": {
+        [paramname]: {
+            "default": /* default value for parameter. Shouldn't actually be
+                used by this script. */,
+            "range": (min, max) /* where min, max or minimum and maximum values
+                for the parameter */
+        }
+    }
+}
 """
 
 import os
@@ -34,24 +57,33 @@ model.lambdify_ss = False
 printer = pprint.PrettyPrinter()
 
 def tabs(n):
+    """
+    Return a string containing n tabs. Helper for debug output Laaaaazy.
+
+    :param n: number of tab characters to return.
+    :return: a string containing n tab characters.
+    """
+
     return '\t' * n
 
 def since(btime):
-    return time.clock() - btime
+    """
+    Return time since the input time.
 
-def halfshift(a):
-    da = np.diff(a)[-1]
-    return np.array(list(a) + [a[-1] + da]) - da / 2.
+    :param btime: (float) current processor time (presumably from time.clock())
+    :return: (float) time since input time in milliseconds
+    """
+    return time.clock() - btime
 
 def noise_cov(ndict):
     """
     Noise covariance from parameterization dictionary.
 
-    :param ndict (dict): dictionary of noise parameters including:
+    :param ndict: (dict) dictionary of noise parameters including:
         SpSh: Ratio of parasitoid variance to host variance (Sp / Sh).
         Chh: Correlation between hosts.
         Cpp: Correlation between parasitoids.
-    :return (np.ndarray): 4x4 covariance matrix.
+    :return: (np.ndarray) 4x4 covariance matrix.
     """
 
     return np.array([
@@ -63,19 +95,29 @@ def noise_cov(ndict):
 
 def compute_metrics(params):
     """
-    Compute the fraction of synchrony between patches as different metrics.
+    Compute the fracsync between patches as different metrics. Fracsync is
+    defined as a division of two correlation matrices. Depending on which sync.
+    effects are being tested (host or para.), the numerator is the correlation
+    matrix for the model having ONLY sync. effects for the pop. in question, and
+    the denominator is the full model with sync. effects on both pops.
 
-    :param params (dict): model/noise parameter dictionary.
-    :return (dict): nested dictionary of modeltype->metric->fraction values.
+    Note that this "fraction" can go above 1, in which case the sync. effects on
+    the OTHER pop. are actually de-synchronizing influences.
+
+    :param params: (dict) model / noise parameters. See the main() docstring for
+        how this dictionary should be formatted.
+    :return: (dict) Fracsync values. Layout:
+        h and p: (dict) For each sync. effects on hosts (h) and paras. (p).
+            Rhh and Rpp: (float) Fracsync of hosts and fracsync of paras.
     """
 
     metrics = dict()
 
-    for modeltype in ['h', 'p']:
+    for effects in ['h', 'p']:
         pden, nden = utilities.dict_split(params, ['SpSh', 'Chh', 'Cpp'])
         pnum, nnum = utilities.dict_split(params, ['SpSh', 'Chh', 'Cpp'])
-        pnum['m{0}'.format(modeltype)] = 0
-        nnum['C{0}{0}'.format(modeltype)] = 0
+        pnum['m{0}'.format(effects)] = 0
+        nnum['C{0}{0}'.format(effects)] = 0
 
         cnum, cden = tuple([
             models.utilities.correlation(model.calculate_covariance(
@@ -85,17 +127,53 @@ def compute_metrics(params):
         ])
         cfrac = abs(cnum) / abs(cden)
 
-        metrics[modeltype] = dict(Rhh=cfrac[0, 1], Rpp=cfrac[2, 3])
+        metrics[effects] = dict(Rhh=cfrac[0, 1], Rpp=cfrac[2, 3])
 
     return metrics
 
 def compute_marginal(opts):
+    """
+    Compute bivariate histogram marginals for a single value of a given
+    parameter For example, if the parameter is "host correlation," assign some
+    constant value (e.g. 0.5) to it and compute fracsync metrics for every
+    combination of other parameters, binning the resulting values in histograms,
+    computing the distribution of fracsync values.
+
+    This will save an intermediate cached pickle file which can then opened by
+    make_products to combine all the histograms into 2D marginals, varying the
+    values for the parameter in question. 1D histograms are cached so that the
+    process can be interrupted and continued without losing progress.
+
+    :param opts: (dict) dictionary of options passed in from an element in a
+        list of parameters given to multiprocessing.Pool. Layout:
+            params: (dict) parameters. See main() docstring for info on how this
+                is formatted. Parameter ranges are replaced with (res,) numpy
+                arrays made using np.linspace.
+            varkey: (str) which parameter is varying for this run.
+            varval: (float) the value varkey should take on.
+            varind: (int) the index of the value in the parameter's range of
+                values.
+            histprops: (dict) properties for the histogram. Layout:
+                    min: (float) minimum fracsync to bin
+                    max: (float) maximum fracsync to bin
+                        NOTE: values that fall outside the max are all gathered
+                        in the top bin.
+                    res: (float) number of bins for histogram.
+                A fracsync value's bin will be computed by linearly
+                interpolating min->max between 0->res.
+    :return: (dict) Histograms of fraction of synchrony values. Layout:
+            h and p: (dict) keyed by effect for testing host (h) or para. (p)
+                sync. effects.
+                Rhh and Rpp: (np.ndarray) 1D histogram of fracsync values on
+                hosts (Rhh) or paras. (Rpp).
+    """
+
     params, vkey, vval, vind, histprops, cacheprefix = [opts[k] for k in [
         'params', 'varkey', 'varval', 'varind', 'histprops', 'cacheprefix'
     ]]
     bmin, bmax, bres = [histprops[k] for k in ['min', 'max', 'res']]
 
-    cachepath = '%s-%s-%d-part.pickle' % (cacheprefix, vkey, vind)
+    cachepath = '%s-%s-part.pickle' % (cacheprefix, vkey)
 
     if not os.path.exists(cachepath):
         tic = time.clock()
@@ -109,7 +187,7 @@ def compute_marginal(opts):
         indices = [np.arange(len(p)) for p in ranges]
         print 'Computing marginals for %s.' % cachepath
 
-        counts = dict()
+        hist = dict()
 
         # Now loop through every combination of values for the embedded
         # hyperplane.
@@ -124,63 +202,77 @@ def compute_marginal(opts):
             metrics = compute_metrics(paramset)
 
             # Loop through to calculate each metric for the point.
-            for modeltype, modelmetrics in metrics.iteritems():
+            for effects, modelmetrics in metrics.iteritems():
                 for metric, mval in modelmetrics.iteritems():
-                    if modeltype not in counts:
-                        counts[modeltype] = dict()
-
-                    if metric not in counts[modeltype]:
-                        counts[modeltype][metric] = np.zeros(
-                            (len(varparams) + 1, len(ranges[0]), bres)
-                        )
-
-                    # TODO: Note: values outside the maximum fraction of
-                    # TODO:     synchrony bin (e.g. 10) will be ignored, given
-                    # TODO:     NaN values. It may be appropriate to instead
-                    # TODO:     stick these in an "overflow" bin or choose a
-                    # TODO:     different value.
-
-                    index_y = int(np.interp(
-                        mval, [bmin, bmax], [0, bres - 1], right=np.nan
+                    hist.setdefault(effects, dict())
+                    hist[effects].setdefault(metric, np.zeros(
+                        (len(varparams) + 1, len(ranges[0]), bres)
                     ))
+                    bind = int(np.interp(mval, [bmin, bmax], [0, bres - 1]))
 
                     try:
-                        counts[modeltype][metric][0, vind, index_y] += 1
+                        hist[effects][metric][0, vind, bind] += 1
+
                         for vari in range(len(ranges)):
-                            counts[modeltype][metric][
-                                vari+1, vpk[vari], index_y
-                            ] += 1
+                            hist[effects][metric][vari+1, vpk[vari], bind] += 1
                     except IndexError:
+                        # This should never happen, since np.interp is clipped.
                         warnings.warn(
                             '%s %s (%.2f) outside bounds (%s). Params: %s.' % (
-                                modeltype, metric, mval,
+                                effects, metric, mval,
                                 '%.2f-%.2f' % (bmin, bmax),
                                 printer.pformat(paramset)
                             )
                         )
                     except ValueError:
-                        # warnings.warn(
-                        #     'Erroneous %s %s (%.2f). Params: %s.' % (
-                        #         modeltype, metric, mval, str(paramset)
-                        #     )
-                        # )
+                        # NaN / inf values. Shouldn't happen, given proper
+                        # parameter ranges.
+                        warnings.warn('Erroneous %s %s (%.2f). Params: %s.' % (
+                            effects, metric, mval, str(paramset)
+                        ))
                         continue
 
         print tabs(4), 'Finished marginals for %s (%.3fs).' % (
             cachepath, since(tic)
         )
         tic = time.clock()
-        cPickle.dump(counts, open(cachepath, 'w'))
+        cPickle.dump(hist, open(cachepath, 'w'))
         print tabs(4), 'Saved %s (%.3fs).' % (cachepath, since(tic))
     else:
         print tabs(4), 'Loading marginals for %s.' % cachepath
         tic = time.clock()
-        counts = cPickle.load(open(cachepath))
+        hist = cPickle.load(open(cachepath))
         print tabs(4), 'Finished loading %s (%.3fs).' % (cachepath, since(tic))
 
-    return counts
+    return hist
 
 def make_products(config, cacheprefix=''):
+    """
+    Compute 2D marginal histograms for fraction of synchrony values for
+    combinations of all model parameters. Fraction of synchrony is defined in
+    terms of fracsync on hosts due to host effects and on parasitoids due to
+    parasitoid effects.
+
+    :param config: (dict) configuration dictionary. See main() docstring for
+        explanation of how this should be formatted. Note that parameter
+        ranges are replaced with np.ndarrays of their values from np.linspace.
+    :param cacheprefix: (str) path/filename prefix to be used for intermediate
+        cached files for picking up where left off if the processes are
+        interrupted. There is a main cache file which is the end, combined
+        result of all computations called [cacheprefix]-products.pickle and
+        there are intermediate cache files for the 1D marginals for parameter
+        value produced by compute_marginals.
+    :return: dictionary of 2D marginal histograms. Layout is as follows:
+        marginals: (dict)
+            [all parameter keys]: (dict)
+                h and p: (dict) for each effect, e.g. only host sync. effects
+                    or parasitoid sync effects.
+                    Rhh and Rpp: (np.ndarray) 2D histogram of fracsync. values
+                    for sync. on hosts (Rhh) and paras. (Rpp). Rows correspond
+                    values for the parameter and columns correspond to fracsync.
+                    histogram bins.
+    """
+
     cachepath = '%s-products.pickle' % cacheprefix
 
     args = config['args']
@@ -215,8 +307,8 @@ def make_products(config, cacheprefix=''):
             processes=config['args']['processes']
         )
 
-        # Make a dict modeltype->metric->(nvars, res, bins) and split it up so
-        # it is a dict varkey->modeltype->metric->(res, bins)
+        # Make a dict effects->metric->(nvars, res, bins) and split it up so
+        # it is a dict varkey->effects->metric->(res, bins)
         marginals = {
             varkey: {
                 mtkey: {
@@ -249,6 +341,16 @@ def make_products(config, cacheprefix=''):
     return products
 
 def plot_marginals(products, plotpath):
+    """
+    For each model parameter, plot 2D marginal histograms with parameter values
+    on the X axis and fraction of synchrony values on the Y axis, Z axis (color)
+    corresponding to bin counts.
+
+    :param products: (dict) Output from make_products. See its docstring for
+        information on how this is organized.
+    :param plotpath: (str) where to save the plot.
+    """
+
     print 'Plotting %s.' % plotpath
     tic = time.clock()
 
@@ -257,10 +359,10 @@ def plot_marginals(products, plotpath):
     hist = config['args']['histogram']
     bins = np.linspace(hist['min'], hist['max'], hist['res'])
 
+    # Size the figure according to how many parameters there are.
     nparams = len(marginals)
     npx = int(nparams ** 0.5)
     npy = (nparams + 1) / npx
-
     pp.figure(figsize=(npx * 7, npy * 5))
 
     for i, (key, marginal) in enumerate(marginals.iteritems()):
@@ -271,18 +373,22 @@ def plot_marginals(products, plotpath):
         zs = marginal['h']['Rhh'].T
         vmin, vmax = np.amin(zs[zs != 0]), np.amax(zs)
         vlogmin, vlogmax = np.log10(vmin), np.log10(vmax)
+
+        # TODO: why is PyCharm complaining?
         pp.contourf(
             param['range'], bins, zs,
             norm=matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax),
             levels=10**np.linspace(vlogmin, vlogmax, 256)
         )
 
+        # Fix axis limits/labels/ticks.
         pp.xlabel('$%s$' % models.parasitism.symbols[key])
         pp.ylabel('$R_{hh}$')
         pp.xlim(np.amin(param['range']), np.amax(param['range']))
         pp.ylim(np.amin(bins), np.amax(bins))
         pp.xticks(param['range'], ['%.2f' % p for p in param['range']])
 
+        # Make colorbar.
         cb = pp.colorbar(ticks=10**np.arange(int(vlogmin), int(vlogmax) + 1))
         cb.set_label(r'\# samples')
 
@@ -291,6 +397,8 @@ def plot_marginals(products, plotpath):
     print tabs(4), 'Saved %s (%.3fs).' % (plotpath, since(tic))
 
 def main():
+    """Where the action is."""
+
     if len(sys.argv) > 1:
         configpath = sys.argv[1]
         configdir, configfile = os.path.split(configpath)
@@ -316,7 +424,7 @@ def main():
             )
         )
 
-        configdir, configname = 'cache/', 'fraction-host-marginals-default'
+        configdir, configname = 'cache/', 'fracsync-marginals-default'
 
     ncpus, res = config['args']['processes'], config['args']['resolution']
 
