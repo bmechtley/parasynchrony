@@ -1,8 +1,15 @@
 {
+  "file": {
+    "slice_size": 20
+  },
   "args": {
     "resolution": 5,
-    "processes": 3,
-    "plot": false
+    "samplings": {
+      "zero_one": {"range": [0, 1], "resolution": 100, "inclmin": true, "p": 0},
+      "one_ten": {"range": [1, 10], "resolution": 100, "inclmin": true, "p": 0.01},
+      "gt_ten": {"range": [10], "resolution": 1, "inclmin": false, "p": 0.01}
+    },
+    "marginaldims": 2
   },
   "params": {
     "r": {"default": 2.0, "range": [1.1, 4]},

@@ -30,17 +30,15 @@ TODO: May be smart to otherwise be using sparse arrays.
 
 import os
 import sys
-import time
 import json
 import pprint
 import cPickle
-import warnings
+import operator
+import functools
 import itertools
 import collections
 
 import numpy as np
-import matplotlib.colors
-import matplotlib.pyplot as pp
 
 import models
 import utilities
@@ -105,121 +103,6 @@ def compute_metrics(params):
 
     return metrics
 
-def compute_marginal(opts):
-    """
-    Compute bivariate histogram marginals for a single value of a given
-    parameter For example, if the parameter is "host correlation," assign some
-    constant value (e.g. 0.5) to it and compute fracsync metrics for every
-    combination of other parameters, binning the resulting values in histograms,
-    computing the distribution of fracsync values.
-
-    This will save an intermediate cached pickle file which can then opened by
-    make_products to combine all the histograms into 2D marginals, varying the
-    values for the parameter in question. 1D histograms are cached so that the
-    process can be interrupted and continued without losing progress.
-
-    :param opts: (dict) dictionary of options passed in from an element in a
-        list of parameters given to multiprocessing.Pool. Layout:
-            params: (dict) parameters. See main() docstring for info on how this
-                is formatted. Parameter ranges are replaced with (res,) numpy
-                arrays made using np.linspace.
-            varkey: (str) which parameter is varying for this run.
-            varval: (float) the value varkey should take on.
-            varind: (int) the index of the value in the parameter's range of
-                values.
-            histprops: (dict) properties for the histogram. Layout:
-                    min: (float) minimum fracsync to bin
-                    max: (float) maximum fracsync to bin
-                        NOTE: values that fall outside the max are all gathered
-                        in the top bin.
-                    res: (float) number of bins for histogram.
-                A fracsync value's bin will be computed by linearly
-                interpolating min->max between 0->res.
-    :return: (dict) Histograms of fraction of synchrony values. Layout:
-            h and p: (dict) keyed by effect for testing host (h) or para. (p)
-                sync. effects.
-                Rhh and Rpp: (np.ndarray) 1D histogram of fracsync values on
-                hosts (Rhh) or paras. (Rpp).
-    """
-
-    params, vkey, vval, vind, histprops, cacheprefix = [opts[k] for k in [
-        'params', 'varkey', 'varval', 'varind', 'histprops', 'cacheprefix'
-    ]]
-    bmin, bmax, bres = [histprops[k] for k in ['min', 'max', 'res']]
-
-    cachepath = '%s-%s-part.pickle' % (cacheprefix, vkey)
-
-    if not os.path.exists(cachepath):
-        tic = time.clock()
-
-        defaults = {k: v['default'] for k, v in params.iteritems()}
-        varparams = {
-            k: v for k, v in params.iteritems()
-            if len(v['range']) > 1 and k != vkey
-        }
-        ranges = [p['range'] for p in varparams.itervalues()]
-        indices = [np.arange(len(p)) for p in ranges]
-        print 'Computing marginals for %s.' % cachepath
-
-        hist = dict()
-
-        # Now loop through every combination of values for the embedded
-        # hyperplane.
-        for vpk in itertools.product(*indices):
-            paramset = dict(defaults)
-
-            for i, k in enumerate(varparams):
-                paramset[k] = ranges[i][vpk[i]]
-
-            paramset[vkey] = vval
-
-            metrics = compute_metrics(paramset)
-
-            # Loop through to calculate each metric for the point.
-            for effects, modelmetrics in metrics.iteritems():
-                for metric, mval in modelmetrics.iteritems():
-                    hist.setdefault(effects, dict())
-                    hist[effects].setdefault(metric, np.zeros(
-                        (len(varparams) + 1, len(ranges[0]), bres)
-                    ))
-                    bind = int(np.interp(mval, [bmin, bmax], [0, bres - 1]))
-
-                    try:
-                        hist[effects][metric][0, vind, bind] += 1
-
-                        for vari in range(len(ranges)):
-                            hist[effects][metric][vari+1, vpk[vari], bind] += 1
-                    except IndexError:
-                        # This should never happen, since np.interp is clipped.
-                        warnings.warn(
-                            '%s %s (%.2f) outside bounds (%s). Params: %s.' % (
-                                effects, metric, mval,
-                                '%.2f-%.2f' % (bmin, bmax),
-                                printer.pformat(paramset)
-                            )
-                        )
-                    except ValueError:
-                        # NaN / inf values. Shouldn't happen, given proper
-                        # parameter ranges.
-                        warnings.warn('Erroneous %s %s (%.2f). Params: %s.' % (
-                            effects, metric, mval, str(paramset)
-                        ))
-                        continue
-
-        print tabs(4), 'Finished marginals for %s (%.3fs).' % (
-            cachepath, since(tic)
-        )
-        tic = time.clock()
-        cPickle.dump(hist, open(cachepath, 'w'))
-        print tabs(4), 'Saved %s (%.3fs).' % (cachepath, since(tic))
-    else:
-        print tabs(4), 'Loading marginals for %s.' % cachepath
-        tic = time.clock()
-        hist = cPickle.load(open(cachepath))
-        print tabs(4), 'Finished loading %s (%.3fs).' % (cachepath, since(tic))
-
-    return hist
-
 def plot_marginals(config):
     """
     TODO: This.
@@ -227,7 +110,27 @@ def plot_marginals(config):
     :param config:
     """
 
+    varkeys = config['file']['varkeys']
+    width = int(np.sqrt(len(varkeys)))
+    height = len(varkeys) / width
+
+
     pass
+
+def param_product(config):
+    """
+    Return an iterator for a product of all parameter values given a config
+    dictionary.
+
+
+    :param config: (dict) configuration dictionary provided by open_config.
+    :return: (iterable) iterator of all combinations of parameter values.
+    """
+
+    return itertools.product(
+        range(config['args']['resolution']),
+        repeat=len(config['props']['varkeys'])
+    )
 
 def run_slice(config, start, stop):
     """
@@ -239,6 +142,8 @@ def run_slice(config, start, stop):
         values.
     """
 
+    print start, stop
+
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
     cachepath = '%s-%d-%d.pickle' % (cacheprefix, start, stop)
 
@@ -247,7 +152,7 @@ def run_slice(config, start, stop):
     nparams = len(paramkeys)
 
     res, marginaldims, samplings = [
-        config['args'][k] for k in ['res', 'marginaldims', 'samplings']
+        config['args'][k] for k in ['resolution', 'marginaldims', 'samplings']
     ]
 
     # Parameters that actually vary, their count, and their index within the
@@ -259,8 +164,8 @@ def run_slice(config, start, stop):
     # All possible combinations of varying parameters. Values are the index of
     # the value for the particular parameter. It's an iterator, so we can freely
     # slice it without having to actually store the thing in memory.
-    pcombos = itertools.product(range(res), repeat=marginaldims)
-    runslice = pcombos[start:stop]
+    pcombos = param_product(config)
+    runslice = itertools.islice(pcombos, start, stop)
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
     # returned in compute_metrics and have the structure of these histograms
@@ -289,7 +194,7 @@ def run_slice(config, start, stop):
         for effectkey in effectkeys:
             for sampkey, sampling in samplings.iteritems():
                 counts[popkey][effectkey][sampkey] = np.zeros(
-                    histshape + (sampling['res'],), dtype=int
+                    histshape + (sampling['resolution'],), dtype=int
                 )
 
                 # Store the list of argmax parameter values + the maximum metric
@@ -302,7 +207,7 @@ def run_slice(config, start, stop):
                 # marginal. Store the list of parameter values + the metric
                 # value.
                 samples[popkey][effectkey][sampkey] = np.zeros(
-                    (int(len(runslice) * sampling['p']), nparams + 1),
+                    (int((stop - start) * sampling['p']), nparams + 1),
                     dtype=float
                 )
 
@@ -311,16 +216,20 @@ def run_slice(config, start, stop):
                 # to check it when plotting. Samples will start from the end,
                 # as they are placed at samplesleft.
                 samplesleft[popkey][effectkey][sampkey] = int(
-                    len(runslice) * sampling['p']
+                    (stop - start) * sampling['p']
                 )
 
     for indices in runslice:
         # Make a single parameter set for this computation, setting each param
         # value to the value in its list of possible params at the index
         # specified.
-        paramset = collections.OrderedDict(params)
-        for ki, paramname in enumerate(params):
-            paramset[paramname] = params[paramname][indices[ki]]
+        paramset = dict()
+        for param in params:
+            if len(params[param]['range']) == 1:
+                paramset[param] = params[param]['range'][0]
+
+        for ki, param in enumerate(varkeys):
+            paramset[param] = params[param]['range'][indices[ki]]
 
         metrics = compute_metrics(paramset)
 
@@ -333,9 +242,11 @@ def run_slice(config, start, stop):
             ind_counts = counts[popkey][effectkey][sampkey]
             metric = metrics[popkey][effectkey]
 
-            (bmin, bmax), bres, incmin, recordp = [
-                samplings[sampkey][k] for k in ['range', 'res', 'inclmin', 'p']
+            brange, bres, incmin, recordp = [
+                samplings[sampkey][k] for k in ['range', 'resolution', 'inclmin', 'p']
             ]
+
+            bmin, bmax = brange[0], brange[-1]
 
             # Bin the metric in a histogram for this sampling range. Really,
             # the bin index only needs to be computed once per sampling range,
@@ -357,23 +268,21 @@ def run_slice(config, start, stop):
                 samplesleft[popkey][effectkey][sampkey] -= 1
 
             # Store statistics for each marginal parameter combination.
-            for vkeys in itertools.product(varkeys, nvars):
-                paramindices = tuple([
-                    indices[varkeyindices[vk]] for vk in vkeys
-                ])
+            for vkeys in itertools.product(varkeys, repeat=marginaldims):
+                # indices of varkeys used for marginals.
+                vkis = tuple([varkeyindices[vk] for vk in vkeys])
 
                 # Record the maximum value and its respective parameters for
                 # each marginal.
-                if metric > maxima[vkeys + paramindices]:
-                    ind_maxima[
-                        vkeys + paramindices
-                    ] = [metric] + [
-                        params[vk][paramindices[varkeyindices[vk]]]
-                        for vk in varkeys
+                print ind_maxima.shape
+
+                if metric > ind_maxima[vkis + indices]:
+                    ind_maxima[vkis + indices] = [metric] + [
+                        paramset[pk] for pk in paramkeys
                     ]
 
                 # Increment the counts for this marginal.
-                ind_counts[vkeys + paramindices + (binindex,)] += 1
+                ind_counts[vkis + indices + (binindex,)] += 1
 
     cPickle.dump(
         dict(
@@ -395,6 +304,7 @@ def open_config(configpath=None):
         file:
             dir: directory to store cached files.
             name: filename prefix for cached files.
+            slice_size: number of computations per individual run.
         props:
             paramkeys: ordered list of parameter names.
             varkeys: ordered list of parameter names for those that vary.
@@ -407,11 +317,13 @@ def open_config(configpath=None):
         config.setdefault('file', dict())
         config['file'].setdefault('dir', configdir)
         config['file'].setdefault('name', configname)
+        config['file'].setdefault('slice_size', 20)
     else:
         config = dict(
             file=dict(
                 dir='cache/',
-                name='fracsync-marginals-default'
+                name='fracsync-marginals-default',
+                slice_size=20
             ),
             args=dict(
                 resolution=10,
@@ -446,7 +358,7 @@ def open_config(configpath=None):
     config['props'] = dict(varkeys=[])
 
     for p in config['params'].itervalues():
-        p.setdefault('res', res)
+        p.setdefault('resolution', res)
         p.setdefault('range', (p['default'], p['default']))
 
         if p['range'][0] != p['range'][1]:
@@ -461,28 +373,56 @@ def open_config(configpath=None):
 
     return config
 
-def generate_runs(config):
+def generate_runs(config, runtype='qsub'):
     """
-    TODO: Generate a qsub file that runs a bunch of slices.
+    Generate a qsub file that runs a bunch of slices. Saves a shell script in
+    the parent directory of the configuration file.
 
-    :param config:
-    :return:
+    :param config: (dict) configuration dict opened with open_config.
+    :param type: (str) 'qsub' for a qsub configuration file or 'sh' for a simple
+        shell script that launches a bunch of processes.
     """
 
-    pass
+    config_dir, config_name, slice_size = [
+        config['file'][k] for k in ['dir', 'name', 'slice_size']
+    ]
+    config_prefix = os.path.join(config_dir, config_name)
+
+    if runtype is 'sh':
+        script_path = config_prefix + '-runs.sh'
+        print 'Writing %s.' % script_path
+
+        outfile = open(script_path, 'w')
+        outfile.writelines(['set -e\n'] + [
+            'python marginals.py run %s %d %d\n' % (
+                config_prefix + '.json', start, start + slice_size
+            )
+            for start in range(
+                0,
+                functools.reduce(
+                    operator.mul,
+                    [len(param) for param in config['params'].values()],
+                    1
+                ),
+                slice_size
+            )
+        ])
+        outfile.close()
+    elif runtype is 'qsub':
+        # TODO: Make work with qsub.
+        pass
 
 def main():
     """Main."""
 
-    try:
-        config = open_config(sys.argv[2])
+    config = open_config(sys.argv[2])
 
-        if sys.argv[1] == 'run':
-            start, stop = sys.argv[3:]
-            run_slice(config, int(start), int(stop))
-        elif sys.argv[1] == 'genruns':
-            generate_runs(config)
-    except IndexError:
+    if sys.argv[1] == 'run' and len(sys.argv) == 5:
+        start, stop = sys.argv[3:]
+        run_slice(config, int(start), int(stop))
+    elif sys.argv[1] == 'genruns' and len(sys.argv) == 3:
+        generate_runs(config, runtype='sh')
+    else:
         print 'usage: python marginals.py {genruns, runs, plot}', \
             'config.json [start] [stop]'
 
