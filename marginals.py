@@ -38,6 +38,9 @@ import functools
 import itertools
 import collections
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 import numpy as np
 
 import models
@@ -111,11 +114,39 @@ def plot_marginals(config):
     """
 
     varkeys = config['file']['varkeys']
-    width = int(np.sqrt(len(varkeys)))
-    height = len(varkeys) / width
+    paramkeys = config['file']['paramkeys']
 
+    fig = pp.figure(len(varkeys) * 15, len(varkeys) * 10)
 
-    pass
+    for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
+        itertools.combinations_with_replacement(enumerate(varkeys), repeat=2)
+    ):
+        ax = pp.add_subplot(
+            len(varkeys),
+            len(varkeys),
+            vki1 * len(varkeys) + vki2,
+            projection='3d'
+        )
+
+        pp.ylabel(vk1)
+        pp.xlabel(vk2)
+        pp.ylim(np.amin(config['params'][vk1]), np.amax(config['params'][vk1]))
+        pp.xlim(np.amin(config['params'][vk2]), np.amax(config['params'][vk2]))
+
+def sum_products(config):
+    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
+
+    for start in range(
+        0,
+        functools.reduce(
+            operator.mul,
+            [len(param) for param in config['params'].values()],
+            1
+        ),
+        slice_size
+    )
+        ])
+    cachepath = '%s-%d-%d.pickle' % (cacheprefix, start, stop)
 
 def param_product(config):
     """
