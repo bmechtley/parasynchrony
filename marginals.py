@@ -40,6 +40,7 @@ import itertools
 import collections
 
 import matplotlib.pyplot as pp
+import matplotlib.cm
 from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
@@ -107,36 +108,13 @@ def compute_metrics(params):
 
     return metrics
 
-def plot_marginals(config):
+def zero_storage_arrays(config):
     """
-    TODO: This.
 
     :param config:
+    :return:
     """
 
-    varkeys = config['file']['varkeys']
-    paramkeys = config['file']['paramkeys']
-
-    fig = pp.figure(len(varkeys) * 15, len(varkeys) * 10)
-
-    for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
-        itertools.combinations_with_replacement(enumerate(varkeys), repeat=2)
-    ):
-        ax = pp.add_subplot(
-            len(varkeys),
-            len(varkeys),
-            vki1 * len(varkeys) + vki2,
-            projection='3d'
-        )
-
-        pp.ylabel(vk1)
-        pp.xlabel(vk2)
-        pp.ylim(np.amin(config['params'][vk1]), np.amax(config['params'][vk1]))
-        pp.xlim(np.amin(config['params'][vk2]), np.amax(config['params'][vk2]))
-
-def sum_products(config):
-    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
-    params = config['params']
     paramkeys = config['props']['paramkeys']
     nparams = len(paramkeys)
 
@@ -146,27 +124,20 @@ def sum_products(config):
         1
     )
 
-    res, marginaldims, samplings = [
-        config['args'][k] for k in ['resolution', 'marginaldims', 'samplings']
-    ]
-
-    # Parameters that actually vary, their count, and their index within the
-    # ordered parameter list.
-    varkeys = config['props']['varkeys']
-    nvarkeys = len(varkeys)
-    varkeyindices = {k: i for i, k in enumerate(varkeys)}
-
-    # All possible combinations of varying parameters. Values are the index of
-    # the value for the particular parameter. It's an iterator, so we can freely
-    # slice it without having to actually store the thing in memory.
-    pcombos = param_product(config)
+    res, marginaldims, samplings = [config['args'][k] for k in (
+        'resolution', 'marginaldims', 'samplings'
+    )]
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
     # returned in compute_metrics and have the structure of these histograms
     # automatically change. Easy fix is to wait to create the matrices until we
     # see the first dict of values returned.
-    popkeys = ['h', 'p']
-    effectkeys = ['Rhh', 'Rpp']
+    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
+
+    # Parameters that actually vary, their count, and their index within the
+    # ordered parameter list.
+    varkeys = config['props']['varkeys']
+    nvarkeys = len(varkeys)
 
     # Construct the statistic matrices.
     # varindex1, varindex2, ..., paramindex1, paramindex2, ...
@@ -213,49 +184,71 @@ def sum_products(config):
                     nruns * sampling['p']
                 )
 
+    return dict(
+        counts=counts,
+        maxima=maxima,
+        samples=samples,
+        samplesleft=samplesleft
+    )
+
+def sum_products(config):
+    """
+
+    :param config:
+    """
+
+    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
+
+    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
+    samplings = config['args']['samplings']
+    storage_arrays = zero_storage_arrays(config)
+    counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
+        'counts', 'maxima', 'samples', 'samplesleft'
+    )]
+
+    # Gather statistic arrays in each run's cache file.
     for cfn in glob.glob(cacheprefix + '-*-*.pickle'):
         cf = cPickle.load(open(cfn))
         for popkey in popkeys:
             for effectkey in effectkeys:
                 for sampkey, sampling in samplings.iteritems():
+                    # Shorthand for global arrays over all cached values.
                     gsampsleft = samplesleft[popkey][effectkey][sampkey]
                     gsamps = samples[popkey][effectkey][sampkey]
                     gcounts = counts[popkey][effectkey][sampkey]
                     gmaxima = maxima[popkey][effectkey][sampkey]
 
+                    # Shorthand for arrays local to this set of cached values.
                     csampsleft = cf['samplesleft'][popkey][effectkey][sampkey]
                     csamps = cf['samples'][popkey][effectkey][sampkey]
                     ccounts = cf['counts'][popkey][effectkey][sampkey]
                     cmaxima = cf['maxima'][popkey][effectkey][sampkey]
                     ncsamps = len(csamps) - csampsleft
 
+                    # Increment histograms.
                     gcounts += ccounts
 
-                    # TODO: Is this the correct way to gather samples?
+                    # Gather samples.
                     gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
                     samplesleft[popkey][effectkey][sampkey] -= ncsamps
 
-                    # TODO: Gather maxima.
+                    # Gather maxima.
+                    joined = np.array([gmaxima, cmaxima])
+                    argmaxima = np.argmax(joined[..., -1], axis=0)
+                    gmaxima[:] = joined[argmaxima]
 
-    cachepath = '%s-%d-%d.pickle' % (cacheprefix, start, stop)
+    cachepath = '%s-full.pickle' % cacheprefix
 
     cPickle.dump(
-        dict(
-            counts=counts,
-            maxima=maxima,
-            samples=samples,
-            samplesleft=samplesleft
-        ),
+        dict(counts=counts, maxima=maxima, samples=samples),
         open(cachepath, 'w')
     )
-    # TODO: Here . . .
-    return dict()
+
 
 def param_product(config):
     """
     Return an iterator for a product of all parameter values given a config
     dictionary.
-
 
     :param config: (dict) configuration dictionary provided by open_config.
     :return: (iterable) iterator of all combinations of parameter values.
@@ -283,16 +276,10 @@ def run_slice(config, start, stop):
 
     params = config['params']
     paramkeys = config['props']['paramkeys']
-    nparams = len(paramkeys)
-
-    res, marginaldims, samplings = [
-        config['args'][k] for k in ['resolution', 'marginaldims', 'samplings']
-    ]
 
     # Parameters that actually vary, their count, and their index within the
     # ordered parameter list.
     varkeys = config['props']['varkeys']
-    nvarkeys = len(varkeys)
     varkeyindices = {k: i for i, k in enumerate(varkeys)}
 
     # All possible combinations of varying parameters. Values are the index of
@@ -301,57 +288,14 @@ def run_slice(config, start, stop):
     pcombos = param_product(config)
     runslice = itertools.islice(pcombos, start, stop)
 
-    # TODO: This is messy. Ideally, I'd be able to change which metrics are
-    # returned in compute_metrics and have the structure of these histograms
-    # automatically change. Easy fix is to wait to create the matrices until we
-    # see the first dict of values returned.
-    popkeys = ['h', 'p']
-    effectkeys = ['Rhh', 'Rpp']
-
-    # Construct the statistic matrices.
-    # varindex1, varindex2, ..., paramindex1, paramindex2, ...
-    histshape = (nvarkeys,) * marginaldims + (res,) * marginaldims
-
-    counts, maxima, samples, samplesleft = [
-        {
-            popkey: {
-                effectkey: {
-                    sampkey: None
-                    for sampkey in samplings
-                } for effectkey in effectkeys
-            } for popkey in popkeys
-        }
-        for _ in range(4)
-    ]
-
-    for popkey in popkeys:
-        for effectkey in effectkeys:
-            for sampkey, sampling in samplings.iteritems():
-                counts[popkey][effectkey][sampkey] = np.zeros(
-                    histshape + (sampling['resolution'],), dtype=int
-                )
-
-                # Store the list of argmax parameter values + the maximum metric
-                # value.
-                maxima[popkey][effectkey][sampkey] = np.zeros(
-                    histshape + (nparams + 1,), dtype=float
-                )
-
-                # Random samples are for the entire hypercube and not for each
-                # marginal. Store the list of parameter values + the metric
-                # value.
-                samples[popkey][effectkey][sampkey] = np.zeros(
-                    (int((stop - start) * sampling['p']), nparams + 1),
-                    dtype=float
-                )
-
-                # How many samples we have left to compute. Decrements. Note
-                # that this may not actually reach zero, so it'll be important
-                # to check it when plotting. Samples will start from the end,
-                # as they are placed at samplesleft.
-                samplesleft[popkey][effectkey][sampkey] = int(
-                    (stop - start) * sampling['p']
-                )
+    storage_arrays = zero_storage_arrays(config)
+    counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
+        'counts', 'maxima', 'samples', 'samplesleft'
+    )]
+    res, marginaldims, samplings = [config['args'][k] for k in (
+        'resolution', 'marginaldims', 'samplings'
+    )]
+    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
 
     for indices in runslice:
         # Make a single parameter set for this computation, setting each param
@@ -376,9 +320,9 @@ def run_slice(config, start, stop):
             ind_counts = counts[popkey][effectkey][sampkey]
             metric = metrics[popkey][effectkey]
 
-            brange, bres, incmin, recordp = [
-                samplings[sampkey][k] for k in ['range', 'resolution', 'inclmin', 'p']
-            ]
+            brange, bres, incmin, recordp = [samplings[sampkey][k] for k in (
+                'range', 'resolution', 'inclmin', 'p'
+            )]
 
             bmin, bmax = brange[0], brange[-1]
 
@@ -518,7 +462,7 @@ def generate_runs(config, runtype='qsub'):
     """
 
     config_dir, config_name, slice_size = [
-        config['file'][k] for k in ['dir', 'name', 'slice_size']
+        config['file'][k] for k in 'dir', 'name', 'slice_size'
     ]
     config_prefix = os.path.join(config_dir, config_name)
 
@@ -545,6 +489,54 @@ def generate_runs(config, runtype='qsub'):
     elif runtype is 'qsub':
         # TODO: Make work with qsub.
         pass
+
+def plot_marginals(config):
+    """
+    TODO: This.
+
+    :param config:
+    """
+
+    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
+    gathered = cPickle.load(open('%s-full.pickle' % cacheprefix))
+    hists = gathered['counts']['h']['Rhh']
+
+    varkeys, paramkeys = [config['file'][k] for k in 'varkeys', 'paramkeys']
+    pp.figure(len(varkeys) * 15, len(varkeys) * 10)
+
+    for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
+        itertools.combinations_with_replacement(enumerate(varkeys), repeat=2)
+    ):
+        ax = pp.add_subplot(
+            len(varkeys),
+            len(varkeys),
+            vki1 * len(varkeys) + vki2,
+            projection='3d'
+        )
+
+        pp.ylabel(vk1)
+        pp.xlabel(vk2)
+        pp.ylim(np.amin(config['params'][vk1]), np.amax(config['params'][vk1]))
+        pp.xlim(np.amin(config['params'][vk2]), np.amax(config['params'][vk2]))
+        mx, my = np.meshgrid(config['params'][vk1], config['params'][vk2])
+
+        hist = hists['zero_one'][vki1, vki2]     # res x res x nbins
+        sums = np.sum(hist, axis=2)     # res x res
+        cumsums = np.cumsum(hist, axis=2)
+
+        percs = 1, 5, 25, 50, 75, 95, 99
+        colors = [matplotlib.cm.spectral(p) for p in percs]
+        sampling = config['args']['samplings']['zero_one']
+
+        for perc, color in zip(percs, colors):
+            bin_idx = np.searchsorted(cumsums, np.percentile(cumsums, perc))
+            vals = np.interp(
+                bin_idx, [0, sampling['resolution'] - 1], sampling['range']
+            )
+
+            ax.plot_surface(mx, my, vals, color=color, alpha=0.5)
+
+    pp.savefig('%s-zero-one.png' % cacheprefix)
 
 def main():
     """Main."""
