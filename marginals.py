@@ -31,6 +31,7 @@ TODO: May be smart to otherwise be using sparse arrays.
 import os
 import sys
 import json
+import glob
 import pprint
 import cPickle
 import operator
@@ -38,7 +39,7 @@ import functools
 import itertools
 import collections
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pp
 from mpl_toolkits.mplot3d import Axes3D
 
 import numpy as np
@@ -135,18 +136,120 @@ def plot_marginals(config):
 
 def sum_products(config):
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
+    params = config['params']
+    paramkeys = config['props']['paramkeys']
+    nparams = len(paramkeys)
 
-    for start in range(
-        0,
-        functools.reduce(
-            operator.mul,
-            [len(param) for param in config['params'].values()],
-            1
-        ),
-        slice_size
+    nruns = functools.reduce(
+        operator.mul,
+        [len(param) for param in config['params'].values()],
+        1
     )
-        ])
+
+    res, marginaldims, samplings = [
+        config['args'][k] for k in ['resolution', 'marginaldims', 'samplings']
+    ]
+
+    # Parameters that actually vary, their count, and their index within the
+    # ordered parameter list.
+    varkeys = config['props']['varkeys']
+    nvarkeys = len(varkeys)
+    varkeyindices = {k: i for i, k in enumerate(varkeys)}
+
+    # All possible combinations of varying parameters. Values are the index of
+    # the value for the particular parameter. It's an iterator, so we can freely
+    # slice it without having to actually store the thing in memory.
+    pcombos = param_product(config)
+
+    # TODO: This is messy. Ideally, I'd be able to change which metrics are
+    # returned in compute_metrics and have the structure of these histograms
+    # automatically change. Easy fix is to wait to create the matrices until we
+    # see the first dict of values returned.
+    popkeys = ['h', 'p']
+    effectkeys = ['Rhh', 'Rpp']
+
+    # Construct the statistic matrices.
+    # varindex1, varindex2, ..., paramindex1, paramindex2, ...
+    histshape = (nvarkeys,) * marginaldims + (res,) * marginaldims
+
+    counts, maxima, samples, samplesleft = [
+        {
+            popkey: {
+                effectkey: {
+                    sampkey: None
+                    for sampkey in samplings
+                } for effectkey in effectkeys
+            } for popkey in popkeys
+        }
+        for _ in range(4)
+    ]
+
+    for popkey in popkeys:
+        for effectkey in effectkeys:
+            for sampkey, sampling in samplings.iteritems():
+                counts[popkey][effectkey][sampkey] = np.zeros(
+                    histshape + (sampling['resolution'],), dtype=int
+                )
+
+                # Store the list of argmax parameter values + the maximum metric
+                # value.
+                maxima[popkey][effectkey][sampkey] = np.zeros(
+                    histshape + (nparams + 1,), dtype=float
+                )
+
+                # Random samples are for the entire hypercube and not for each
+                # marginal. Store the list of parameter values + the metric
+                # value.
+                samples[popkey][effectkey][sampkey] = np.zeros(
+                    (int(nruns * sampling['p']), nparams + 1),
+                    dtype=float
+                )
+
+                # How many samples we have left to compute. Decrements. Note
+                # that this may not actually reach zero, so it'll be important
+                # to check it when plotting. Samples will start from the end,
+                # as they are placed at samplesleft.
+                samplesleft[popkey][effectkey][sampkey] = int(
+                    nruns * sampling['p']
+                )
+
+    for cfn in glob.glob(cacheprefix + '-*-*.pickle'):
+        cf = cPickle.load(open(cfn))
+        for popkey in popkeys:
+            for effectkey in effectkeys:
+                for sampkey, sampling in samplings.iteritems():
+                    gsampsleft = samplesleft[popkey][effectkey][sampkey]
+                    gsamps = samples[popkey][effectkey][sampkey]
+                    gcounts = counts[popkey][effectkey][sampkey]
+                    gmaxima = maxima[popkey][effectkey][sampkey]
+
+                    csampsleft = cf['samplesleft'][popkey][effectkey][sampkey]
+                    csamps = cf['samples'][popkey][effectkey][sampkey]
+                    ccounts = cf['counts'][popkey][effectkey][sampkey]
+                    cmaxima = cf['maxima'][popkey][effectkey][sampkey]
+                    ncsamps = len(csamps) - csampsleft
+
+                    gcounts += ccounts
+
+                    # TODO: Is this the correct way to gather samples?
+                    gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
+                    samplesleft[popkey][effectkey][sampkey] -= ncsamps
+
+                    # TODO: Gather maxima.
+
     cachepath = '%s-%d-%d.pickle' % (cacheprefix, start, stop)
+
+    cPickle.dump(
+        dict(
+            counts=counts,
+            maxima=maxima,
+            samples=samples,
+            samplesleft=samplesleft
+        ),
+        open(cachepath, 'w')
+    )
+    # TODO: Here . . .
+    return dict()
 
 def param_product(config):
     """
