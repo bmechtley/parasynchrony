@@ -548,6 +548,8 @@ def main():
         run_slice(config, int(start), int(stop))
     elif sys.argv[1] == 'genruns' and len(sys.argv) == 3:
         generate_runs(config, runtype='sh')
+    elif sys.argv[1] == 'plot' and len(sys.argv) == 3:
+        plot_marginals(config)
     else:
         print 'usage: python marginals.py {genruns, runs, plot}', \
             'config.json [start] [stop]'
