@@ -197,6 +197,8 @@ def sum_products(config):
     :param config:
     """
 
+    print 'Collecting data from saved runs.'
+
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
 
     popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
@@ -498,6 +500,13 @@ def plot_marginals(config):
     """
 
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
+    cachefile = '%s-full.pickle' % cacheprefix
+
+    if not os.path.exists(cachefile):
+        sum_products(config)
+
+    print 'Plotting marginals.'
+
     gathered = cPickle.load(open('%s-full.pickle' % cacheprefix))
     hists = gathered['counts']['h']['Rhh']
 
