@@ -498,7 +498,7 @@ def generate_runs(config, runtype='qsub'):
         outfile = open(job_path, 'w')
         outfile.writelines([
             '#PBS -N %s\n' % config['file']['name'],
-            '#PBS -l nodes=20:ppn=1,mem=2000m,walltime=24:00:00\n',
+            '#PBS -l nodes=1:ppn=1,mem=1000m,walltime=24:00:00\n',
             '#PBS -M mechtley@ku.edu\n',
             '#PBS -S /bin/bash\n',
             '#PBS -d %s\n' % os.getcwd(),
@@ -507,16 +507,13 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -t 0-%d\n' % ((ncalcs + 1) / slice_size),
             ' '.join([
                 'python marginals.py run',
-                '%s (${PBS_ARRAY_INDEX}*%d) (${PBS_ARRAY_INDEX}*%d+%d)\n' % (
-                    os.path.join(
-                        os.getcwd(),
-                        config['file']['dir'],
-                        config['file']['name'] + '.json'
-                    ),
-                    slice_size,
-                    slice_size,
-                    slice_size
-                )
+                os.path.join(
+                    os.getcwd(),
+                    config['file']['dir'],
+                    config['file']['name'] + '.json'
+                ),
+                '$((PBS_ARRAY_INDEX * %d))' % slice_size,
+                '$((PBS_ARRAY_INDEX * %d + %d))\n' % (slice_size, slice_size)
             ])
         ])
 
