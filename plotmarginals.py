@@ -284,6 +284,8 @@ def plot_marginals(config):
 
         pp.ylabel(vk1)
         pp.xlabel(vk2)
+        print 'y', np.amin(config['params'][vk1]), np.amax(config['params'][vk1])
+        print 'x', np.amin(config['params'][vk2]), np.amax(config['params'][vk2])
         pp.ylim(np.amin(config['params'][vk1]), np.amax(config['params'][vk1]))
         pp.xlim(np.amin(config['params'][vk2]), np.amax(config['params'][vk2]))
         mx, my = np.meshgrid(config['params'][vk1], config['params'][vk2])
