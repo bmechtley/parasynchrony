@@ -149,14 +149,7 @@ def zero_storage_arrays(config):
 
     paramkeys = config['props']['paramkeys']
     nparams = len(paramkeys)
-
-    nruns = functools.reduce(
-        operator.mul,
-        [len(param) for param in config['params'].values()],
-        1
-    )
-
-    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
+    paramres, samplings = [config['args'][k] for k in 'resolution', 'samplings']
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
     # returned in compute_metrics and have the structure of these histograms
@@ -171,16 +164,17 @@ def zero_storage_arrays(config):
 
     # Construct the statistic matrices.
     # varindex1, varindex2, paramindex1, paramindex2, ...
-    histshape = (nvarkeys, nvarkeys, res, res)
+    histshape = (nvarkeys, nvarkeys, paramres, paramres)
 
     counts, maxima, samples, samplesleft = [
         {
-            popkey: {
-                effectkey: {
-                    sampkey: None
-                    for sampkey in samplings
-                } for effectkey in effectkeys
-            } for popkey in popkeys
+            sampkey: {
+                popkey: {
+                    effectkey: None for effectkey in effectkeys
+                }
+                for popkey in popkeys
+            }
+            for sampkey in samplings
         }
         for _ in range(4)
     ]
@@ -188,22 +182,23 @@ def zero_storage_arrays(config):
     for popkey in popkeys:
         for effectkey in effectkeys:
             for sampkey, sampling in samplings.iteritems():
-                nsamples = int(sampling['nsamples'])
+                nsamples, sampres = int(sampling['nsamples'])
+                sampres = sampling['resolution']
 
-                counts[popkey][effectkey][sampkey] = np.zeros(
-                    histshape + (sampling['resolution'],), dtype=int
+                counts[sampkey][popkey][effectkey] = np.zeros(
+                    histshape + (sampres,), dtype=int
                 )
 
                 # Store the list of argmax parameter values + the maximum metric
                 # value.
-                maxima[popkey][effectkey][sampkey] = np.zeros(
+                maxima[sampkey][popkey][effectkey] = np.zeros(
                     histshape + (nparams + 1,), dtype=float
                 )
 
                 # Random samples are for the entire hypercube and not for each
                 # marginal. Store the list of parameter values + the metric
                 # value.
-                samples[popkey][effectkey][sampkey] = np.zeros(
+                samples[sampkey][popkey][effectkey] = np.zeros(
                     (nsamples, nparams + 1), dtype=float
                 )
 
@@ -211,7 +206,7 @@ def zero_storage_arrays(config):
                 # that this may not actually reach zero, so it'll be important
                 # to check it when plotting. Samples will start from the end,
                 # as they are placed at samplesleft.
-                samplesleft[popkey][effectkey][sampkey] = nsamples
+                samplesleft[sampkey][popkey][effectkey] = nsamples
 
     return dict(
         counts=counts,
