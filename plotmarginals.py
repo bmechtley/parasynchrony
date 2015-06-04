@@ -236,6 +236,7 @@ def sum_products(config):
 
                     try:
                         argmaxima = np.argmax(joined[..., -1], axis=0)
+                        print dict(joined=joined.shape, argmaxima=argmaxima.shape)
                     except ValueError:
                         print cfn
                         print id(maxima[popkey][effectkey][sampkey])
