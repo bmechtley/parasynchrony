@@ -504,7 +504,7 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -d %s\n' % os.getcwd(),
             '#PBS -e /users/mechtley/logs/%s.err\n' % config['file']['name'],
             '#PBS -o /users/mechtley/logs/%s.out\n' % config['file']['name'],
-            '#PBS -t 0-%d:%d\n' % (ncalcs, slice_size),
+            '#PBS -t 1-%d:%d <pbs.script>\n' % (ncalcs, slice_size),
             'python marginals.py run ${PBS_ARRAYID} (${PBS_ARRAYID}+%d)\n' % slice_size
         ])
         outfile.close()
