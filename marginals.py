@@ -497,7 +497,7 @@ def generate_runs(config, runtype='qsub'):
 
         outfile = open(job_path, 'w')
         outfile.writelines([
-            '#PBS -N %s\n' % config['name'],
+            '#PBS -N %s\n' % config['file']['name'],
             '#PBS -l nodes=20:ppn=1,mem=2000m,walltime=24:00:00\n',
             '#PBS -M mechtley@ku.edu\n',
             '#PBS -S /bin/bash\n',
@@ -572,7 +572,7 @@ def main():
         start, stop = sys.argv[3:]
         run_slice(config, int(start), int(stop))
     elif sys.argv[1] == 'genruns' and len(sys.argv) == 3:
-        generate_runs(config, runtype='sh')
+        generate_runs(config, runtype='qsub')
     elif sys.argv[1] == 'plot' and len(sys.argv) == 3:
         plot_marginals(config)
     else:
