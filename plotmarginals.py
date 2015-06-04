@@ -298,7 +298,7 @@ def plot_marginals(config):
 def main():
     """Main."""
 
-    plot_marginals(open_config(sys.argv['']))
+    plot_marginals(open_config(sys.argv[1]))
 
 if __name__ == '__main__':
     main()

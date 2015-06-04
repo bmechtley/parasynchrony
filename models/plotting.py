@@ -50,7 +50,7 @@ def plot_twopane_axes(n=1, ylabels=None, yticks=None, ylimits=None):
 
     fig = pp.gcf()
     gs = gridspec.GridSpec(n, n, wspace=0.25, hspace=0.25)
-    axlist = [[{} for j in range(n)] for i in range(n)]
+    axlist = [[{} for _ in range(n)] for _ in range(n)]
 
     for i, j in itertools.combinations_with_replacement(range(n), 2):
         # This is the vertically stacked grid inside the current grid cell.
