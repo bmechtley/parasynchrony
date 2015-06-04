@@ -493,7 +493,7 @@ def generate_runs(config, runtype='qsub'):
         ])
         outfile.close()
     elif runtype is 'qsub':
-        job_path = config_prefix + '-runs.pbs'
+        job_path = config_prefix + '-runs.sh'
 
         outfile = open(job_path, 'w')
         outfile.writelines([
