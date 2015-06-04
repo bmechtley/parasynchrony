@@ -347,6 +347,8 @@ def generate_runs(config, runtype='qsub'):
     ]
     config_prefix = os.path.join(config_dir, config_name)
 
+    nc = ncalcs(config)
+
     if runtype is 'sh':
         script_path = config_prefix + '-runs.sh'
         print 'Writing %s.' % script_path
@@ -356,7 +358,7 @@ def generate_runs(config, runtype='qsub'):
             'python marginals.py run %s %d %d\n' % (
                 config_prefix + '.json', start, start + slice_size
             )
-            for start in range(0, ncalcs, slice_size)
+            for start in range(0, nc, slice_size)
         ])
         outfile.close()
     elif runtype is 'qsub':
@@ -371,7 +373,7 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -d %s\n' % os.getcwd(),
             '#PBS -e /users/mechtley/logs/%s.err\n' % config['file']['name'],
             '#PBS -o /users/mechtley/logs/%s.out\n' % config['file']['name'],
-            '#PBS -t 0-%d\n' % ((ncalcs + 1) / slice_size),
+            '#PBS -t 0-%d\n' % ((nc + 1) / slice_size),
             ' '.join([
                 'python -W ignore marginals.py run',
                 os.path.join(
