@@ -509,6 +509,7 @@ def generate_runs(config, runtype='qsub'):
                 'python marginals.py run',
                 '%s ${PBS_ARRAY_INDEX} (${PBS_ARRAY_INDEX}+%d)\n' % (
                     os.path.join(
+                        os.path.getcwd(),
                         config['file']['dir'],
                         config['file']['name'] + '.json'
                     ),
