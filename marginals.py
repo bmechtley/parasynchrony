@@ -424,7 +424,7 @@ def generate_runs(config, runtype='qsub'):
         outfile.writelines([
             '#PBS -N %s\n' % config['file']['name'],
             '#PBS -l nodes=1:ppn=1,mem=1000m,walltime=24:00:00\n',
-            '#PBS -M mechtley@ku.edu\n',
+            '#PBS -m n\n',
             '#PBS -S /bin/bash\n',
             '#PBS -d %s\n' % os.getcwd(),
             '#PBS -e /users/mechtley/logs/%s.err\n' % config['file']['name'],
