@@ -189,10 +189,11 @@ def sum_products(config):
         'counts', 'maxima', 'samples', 'samplesleft'
     )]
 
+    cfns = glob.glob(cacheprefix + '-*-*.pickle')
     # Gather statistic arrays in each run's cache file.
-    for cfn in glob.glob(cacheprefix + '-*-*.pickle'):
+    for i, cfn in enumerate(cfns):
         cf = cPickle.load(open(cfn))
-        print cfn
+        print '%d / %d: %s' % (i, len(cfn), cfn)
 
         for popkey in popkeys:
             for effectkey in effectkeys:
