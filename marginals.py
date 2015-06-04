@@ -224,11 +224,17 @@ def sum_products(config):
                     csampsleft = cf['samplesleft'][popkey][effectkey][sampkey]
                     csamps = cf['samples'][popkey][effectkey][sampkey]
                     ccounts = cf['counts'][popkey][effectkey][sampkey]
+
                     cmaxima = cf['maxima'][popkey][effectkey][sampkey]
                     ncsamps = len(csamps) - csampsleft
 
                     # Increment histograms.
-                    gcounts += ccounts
+                    try:
+                        gcounts += ccounts
+                    except ValueError:
+                        print cfn
+                        print gcounts.shape, ccounts.shape
+                        exit(-1)
 
                     # Gather samples.
                     gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
@@ -236,8 +242,16 @@ def sum_products(config):
 
                     # Gather maxima.
                     joined = np.array([gmaxima, cmaxima])
-                    argmaxima = np.argmax(joined[..., -1], axis=0)
-                    gmaxima[:] = joined[argmaxima]
+
+                    try:
+                        argmaxima = np.argmax(joined[..., -1], axis=0)
+                    except ValueError:
+                        print cfn
+                        print id(maxima[popkey][effectkey][sampkey])
+                        print joined[..., -1]
+                        exit(-1)
+
+                    maxima[popkey][effectkey][sampkey] = joined[argmaxima]
 
     cachepath = '%s-full.pickle' % cacheprefix
 
@@ -448,7 +462,7 @@ def open_config(configpath=None):
 
     config['props'] = dict(paramkeys=config['params'].keys())
     config['props']['varkeys'] = [
-        k for k in config['props']['paramkeys'] if len(config['params'][k]) > 1
+        k for k in config['props']['paramkeys'] if len(config['params'][k]['range']) > 1
     ]
 
     return config
