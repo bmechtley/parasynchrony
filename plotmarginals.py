@@ -272,7 +272,7 @@ def plot_marginals(config):
     pp.figure(figsize=(len(varkeys) * 15, len(varkeys) * 10))
 
     for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
-        itertools.combinations_with_replacement(enumerate(varkeys), repeat=2)
+        itertools.combinations_with_replacement(enumerate(varkeys), 2)
     ):
         ax = pp.add_subplot(
             len(varkeys),
