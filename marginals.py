@@ -40,7 +40,7 @@ import collections
 
 import numpy as np
 
-from .. import models
+import models
 import utilities
 
 model = models.parasitism.get_model('nbd(2)')
