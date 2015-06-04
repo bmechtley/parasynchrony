@@ -284,10 +284,10 @@ def plot_marginals(config):
 
         pp.ylabel(vk1)
         pp.xlabel(vk2)
-        print 'y', np.amin(config['params'][vk1]), np.amax(config['params'][vk1])
-        print 'x', np.amin(config['params'][vk2]), np.amax(config['params'][vk2])
-        pp.ylim(np.amin(config['params'][vk1]), np.amax(config['params'][vk1]))
-        pp.xlim(np.amin(config['params'][vk2]), np.amax(config['params'][vk2]))
+        vk1r, vk2r = [config['params'][vkn]['range'] for vkn in vk1, vk1]
+
+        pp.ylim(np.amin(vk1r), np.amax(vk1r))
+        pp.xlim(np.amin(vk2r), np.amax(vk2r))
         mx, my = np.meshgrid(config['params'][vk1], config['params'][vk2])
 
         hist = hists['zero_one'][vki1, vki2]     # res x res x nbins
