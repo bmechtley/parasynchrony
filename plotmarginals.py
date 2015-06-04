@@ -192,6 +192,8 @@ def sum_products(config):
     # Gather statistic arrays in each run's cache file.
     for cfn in glob.glob(cacheprefix + '-*-*.pickle'):
         cf = cPickle.load(open(cfn))
+        print cfn
+
         for popkey in popkeys:
             for effectkey in effectkeys:
                 for sampkey, sampling in samplings.iteritems():
@@ -218,20 +220,11 @@ def sum_products(config):
                         exit(-1)
 
                     # Gather samples.
-                    print dict(
-                        gsampsleft=gsampsleft,
-                        ncsamps=ncsamps,
-                        csampsleft=csampsleft,
-                        csamps=csamps.shape,
-                        gsamps=gsamps.shape
-                    )
-
                     if ncsamps:
                         gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
                         samplesleft[popkey][effectkey][sampkey] -= ncsamps
 
                     # Gather maxima.
-                    print dict(gmaxima=gmaxima.shape, cmaxima=cmaxima.shape)
                     joined = np.array([gmaxima, cmaxima])
 
                     try:
@@ -239,8 +232,6 @@ def sum_products(config):
                             np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
                             (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
                         )
-
-                        print dict(joined=joined.shape, argmaxima=argmaxima.shape)
                     except ValueError:
                         print cfn
                         print id(maxima[popkey][effectkey][sampkey])
