@@ -221,7 +221,9 @@ def sum_products(config):
                     print dict(
                         gsampsleft=gsampsleft,
                         ncsamps=ncsamps,
-                        csampsleft=csampsleft.shape,
+                        csampsleft=csampsleft,
+                        csamps=csamps.shape,
+                        gsamps=gsamps.shape
                     )
 
                     gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
