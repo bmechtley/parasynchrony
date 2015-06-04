@@ -505,8 +505,18 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -e /users/mechtley/logs/%s.err\n' % config['file']['name'],
             '#PBS -o /users/mechtley/logs/%s.out\n' % config['file']['name'],
             '#PBS -J 0-%d:%d\n' % (ncalcs, slice_size),
-            'python marginals.py run ${PBS_ARRAY_INDEX} (${PBS_ARRAY_INDEX}+%d)\n' % slice_size
+            ' '.join([
+                'python marginals.py run',
+                '%s ${PBS_ARRAY_INDEX} (${PBS_ARRAY_INDEX}+%d)\n' % (
+                    os.path.join(
+                        config['file']['dir'],
+                        config['file']['name'] + '.json'
+                    ),
+                    slice_size
+                )
+            ])
         ])
+
         outfile.close()
 
 def plot_marginals(config):
