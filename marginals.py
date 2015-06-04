@@ -512,8 +512,8 @@ def generate_runs(config, runtype='qsub'):
                     config['file']['dir'],
                     config['file']['name'] + '.json'
                 ),
-                '$((PBS_ARRAY_INDEX * %d))' % slice_size,
-                '$((PBS_ARRAY_INDEX * %d + %d))\n' % (slice_size, slice_size)
+                '$((PBS_ARRAYID * %d))' % slice_size,
+                '$((PBS_ARRAYID * %d + %d))\n' % (slice_size, slice_size)
             ])
         ])
 
