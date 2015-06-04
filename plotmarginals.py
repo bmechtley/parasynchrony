@@ -235,7 +235,11 @@ def sum_products(config):
                     joined = np.array([gmaxima, cmaxima])
 
                     try:
-                        argmaxima = np.argmax(joined[..., -1], axis=0)
+                        argmaxima = np.tile(
+                            np.argmax(joined[..., -1], axis=0),
+                            gmaxima.shape[-1]
+                        )
+
                         print dict(joined=joined.shape, argmaxima=argmaxima.shape)
                     except ValueError:
                         print cfn
@@ -244,7 +248,7 @@ def sum_products(config):
                         exit(-1)
 
                     maxima[popkey][effectkey][sampkey] = np.where(
-                        argmaxima, gmaxima, gmaxima
+                        argmaxima, gmaxima, cmaxima
                     )
 
     cachepath = '%s-full.pickle' % cacheprefix
