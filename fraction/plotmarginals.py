@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import glob
-import pprint
 import cPickle
 import operator
 import functools
@@ -11,12 +10,8 @@ import collections
 
 import numpy as np
 
-import models
-import utilities
-
 import matplotlib.pyplot as pp
 import matplotlib.cm
-from mpl_toolkits.mplot3d import Axes3D
 
 def open_config(configpath=None):
     """

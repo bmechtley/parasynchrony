@@ -31,7 +31,6 @@ TODO: May be smart to otherwise be using sparse arrays.
 import os
 import sys
 import json
-import glob
 import pprint
 import cPickle
 import operator
@@ -41,7 +40,7 @@ import collections
 
 import numpy as np
 
-import models
+from .. import models
 import utilities
 
 model = models.parasitism.get_model('nbd(2)')
