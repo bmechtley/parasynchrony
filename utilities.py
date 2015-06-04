@@ -8,7 +8,11 @@ Various utility helper functions shared between the different analysis scripts.
 """
 
 import json
+import os.path
+import operator
 import itertools
+import functools
+import collections
 import multiprocessing
 
 import numpy as np
@@ -27,7 +31,6 @@ class NumpyAwareJSONEncoder(json.JSONEncoder):
             return obj.tolist()
         else:
             return json.JSONEncoder.default(self, obj)
-
 
 def multipool(
         mapfun,
@@ -137,6 +140,86 @@ def decode_dict(data):
 
     return rv
 
+def zero_storage_arrays(config):
+    """
+
+    :param config:
+    :return:
+    """
+
+    paramkeys = config['props']['paramkeys']
+    nparams = len(paramkeys)
+
+    nruns = functools.reduce(
+        operator.mul,
+        [len(param) for param in config['params'].values()],
+        1
+    )
+
+    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
+
+    # TODO: This is messy. Ideally, I'd be able to change which metrics are
+    # returned in compute_metrics and have the structure of these histograms
+    # automatically change. Easy fix is to wait to create the matrices until we
+    # see the first dict of values returned.
+    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
+
+    # Parameters that actually vary, their count, and their index within the
+    # ordered parameter list.
+    varkeys = config['props']['varkeys']
+    nvarkeys = len(varkeys)
+
+    # Construct the statistic matrices.
+    # varindex1, varindex2, paramindex1, paramindex2, ...
+    histshape = (nvarkeys, nvarkeys, res, res)
+
+    counts, maxima, samples, samplesleft = [
+        {
+            popkey: {
+                effectkey: {
+                    sampkey: None
+                    for sampkey in samplings
+                } for effectkey in effectkeys
+            } for popkey in popkeys
+        }
+        for _ in range(4)
+    ]
+
+    for popkey in popkeys:
+        for effectkey in effectkeys:
+            for sampkey, sampling in samplings.iteritems():
+                counts[popkey][effectkey][sampkey] = np.zeros(
+                    histshape + (sampling['resolution'],), dtype=int
+                )
+
+                # Store the list of argmax parameter values + the maximum metric
+                # value.
+                maxima[popkey][effectkey][sampkey] = np.zeros(
+                    histshape + (nparams + 1,), dtype=float
+                )
+
+                # Random samples are for the entire hypercube and not for each
+                # marginal. Store the list of parameter values + the metric
+                # value.
+                samples[popkey][effectkey][sampkey] = np.zeros(
+                    (int(nruns * sampling['p']), nparams + 1),
+                    dtype=float
+                )
+
+                # How many samples we have left to compute. Decrements. Note
+                # that this may not actually reach zero, so it'll be important
+                # to check it when plotting. Samples will start from the end,
+                # as they are placed at samplesleft.
+                samplesleft[popkey][effectkey][sampkey] = int(
+                    nruns * sampling['p']
+                )
+
+    return dict(
+        counts=counts,
+        maxima=maxima,
+        samples=samples,
+        samplesleft=samplesleft
+    )
 
 def load_config(configfile):
     config_json = json.load(
@@ -146,6 +229,88 @@ def load_config(configfile):
 
     return pybatchdict.BatchDict(config_json)
 
+def config_defaults(configpath=None):
+    """
+    Open a configuration file and reformat it.
+
+    :param configpath: path to configuration JSON file.
+    :return: (dict) Configuration dictionary with parameter ranges replaced with
+        lists of parameter values and a few extra keys:
+        file:
+            dir: directory to store cached files.
+            name: filename prefix for cached files.
+            slice_size: number of computations per individual run.
+        props:
+            paramkeys: ordered list of parameter names.
+            varkeys: ordered list of parameter names for those that vary.
+    """
+
+    if configpath is not None:
+        configdir, configfile = os.path.split(configpath)
+        configname = os.path.splitext(configfile)[0]
+        config = json.load(open(configpath))
+        config.setdefault('file', dict())
+        config['file'].setdefault('dir', configdir)
+        config['file'].setdefault('name', configname)
+        config['file'].setdefault('slice_size', 20)
+    else:
+        config = dict(
+            file=dict(
+                dir='cache/',
+                name='fracsync-marginals-default',
+                slice_size=20
+            ),
+            args=dict(
+                resolution=10,
+                samplings=dict(
+                    zero_one=dict(
+                        range=[0, 1], res=100, inclmin=True, nsamples=0
+                    ),
+                    one_ten=dict(
+                        range=[1, 10], res=100, inclmin=False, nsamples=1000
+                    ),
+                    gt_ten=dict(
+                        range=[10], res=1, inclmin=False, nsamples=1000
+                    )
+                )
+            ),
+            params=dict(
+                r=dict(default=2.0, range=[1.1, 4]),
+                a=dict(default=1.0),
+                c=dict(default=1.0),
+                k=dict(default=0.5, range=[0.1, 0.9]),
+                mh=dict(default=0.25, range=[0, 0.5]),
+                mp=dict(default=0.25, range=[0, 0.5]),
+                SpSh=dict(default=1.0, range=[0, 10]),
+                Chh=dict(default=0.5, range=[0, 1]),
+                Cpp=dict(default=0.5, range=[0, 1])
+            )
+        )
+
+    # Make sure the params are ordered consistently so we can easily slice
+    # combinations without having to actually store info regarding to which
+    # parameters each computation should use.
+    config['params'] = collections.OrderedDict(config['params'])
+    res = config['args']['resolution']
+
+    config['props'] = dict(varkeys=[])
+
+    for p in config['params'].itervalues():
+        p.setdefault('resolution', res)
+        p.setdefault('range', (p['default'], p['default']))
+
+        if p['range'][0] != p['range'][1]:
+            p['range'] = np.linspace(p['range'][0], p['range'][1], res)
+        else:
+            p['range'] = [p['default']]
+
+    config['props'] = dict(paramkeys=config['params'].keys())
+    config['props']['varkeys'] = [
+        k for k in config['props']['paramkeys']
+        if len(config['params'][k]['range']) > 1
+    ]
+
+    return config
 
 def norm_shape(shape):
     """

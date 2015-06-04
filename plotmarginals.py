@@ -1,181 +1,20 @@
 import os
 import sys
-import json
 import glob
 import cPickle
-import operator
-import functools
 import itertools
-import collections
 
 import numpy as np
+import scipy.stats
 
 import matplotlib.pyplot as pp
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm
 
-def open_config(configpath=None):
-    """
-    Open a configuration file and reformat it.
-
-    :param configpath: path to configuration JSON file.
-    :return: (dict) Configuration dictionary with parameter ranges replaced with
-        lists of parameter values and a few extra keys:
-        file:
-            dir: directory to store cached files.
-            name: filename prefix for cached files.
-            slice_size: number of computations per individual run.
-        props:
-            paramkeys: ordered list of parameter names.
-            varkeys: ordered list of parameter names for those that vary.
-    """
-
-    if configpath is not None:
-        configdir, configfile = os.path.split(configpath)
-        configname = os.path.splitext(configfile)[0]
-        config = json.load(open(configpath))
-        config.setdefault('file', dict())
-        config['file'].setdefault('dir', configdir)
-        config['file'].setdefault('name', configname)
-        config['file'].setdefault('slice_size', 20)
-    else:
-        config = dict(
-            file=dict(
-                dir='cache/',
-                name='fracsync-marginals-default',
-                slice_size=20
-            ),
-            args=dict(
-                resolution=10,
-                samplings=dict(
-                    zero_one=dict(range=[0,1], res=100, inclmin=True, p=0),
-                    one_ten=dict(
-                        range=[1,10], res=100, inclmin=False, p=0.01
-                    ),
-                    gt_ten=dict(range=[10,], res=1, inclmin=False, p=0.01)
-                )
-            ),
-            params=dict(
-                r=dict(default=2.0, range=[1.1, 4]),
-                a=dict(default=1.0),
-                c=dict(default=1.0),
-                k=dict(default=0.5, range=[0.1, 0.9]),
-                mh=dict(default=0.25, range=[0, 0.5]),
-                mp=dict(default=0.25, range=[0, 0.5]),
-                SpSh=dict(default=1.0, range=[0, 10]),
-                Chh=dict(default=0.5, range=[0, 1]),
-                Cpp=dict(default=0.5, range=[0, 1])
-            )
-        )
-
-    # Make sure the params are ordered consistently so we can easily slice
-    # combinations without having to actually store info regarding to which
-    # parameters each computation should use.
-    config['params'] = collections.OrderedDict(config['params'])
-    res = config['args']['resolution']
-
-    config['props'] = dict(varkeys=[])
-
-    for p in config['params'].itervalues():
-        p.setdefault('resolution', res)
-        p.setdefault('range', (p['default'], p['default']))
-
-        if p['range'][0] != p['range'][1]:
-            p['range'] = np.linspace(p['range'][0], p['range'][1], res)
-        else:
-            p['range'] = [p['default']]
-
-    config['props'] = dict(paramkeys=config['params'].keys())
-    config['props']['varkeys'] = [
-        k for k in config['props']['paramkeys'] if len(config['params'][k]['range']) > 1
-    ]
-
-    return config
-
-def zero_storage_arrays(config):
-    """
-
-    :param config:
-    :return:
-    """
-
-    paramkeys = config['props']['paramkeys']
-    nparams = len(paramkeys)
-
-    nruns = functools.reduce(
-        operator.mul,
-        [len(param) for param in config['params'].values()],
-        1
-    )
-
-    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
-
-    # TODO: This is messy. Ideally, I'd be able to change which metrics are
-    # returned in compute_metrics and have the structure of these histograms
-    # automatically change. Easy fix is to wait to create the matrices until we
-    # see the first dict of values returned.
-    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
-
-    # Parameters that actually vary, their count, and their index within the
-    # ordered parameter list.
-    varkeys = config['props']['varkeys']
-    nvarkeys = len(varkeys)
-
-    # Construct the statistic matrices.
-    # varindex1, varindex2, paramindex1, paramindex2, ...
-    histshape = (nvarkeys, nvarkeys, res, res)
-
-    counts, maxima, samples, samplesleft = [
-        {
-            popkey: {
-                effectkey: {
-                    sampkey: None
-                    for sampkey in samplings
-                } for effectkey in effectkeys
-            } for popkey in popkeys
-        }
-        for _ in range(4)
-    ]
-
-    for popkey in popkeys:
-        for effectkey in effectkeys:
-            for sampkey, sampling in samplings.iteritems():
-                counts[popkey][effectkey][sampkey] = np.zeros(
-                    histshape + (sampling['resolution'],), dtype=int
-                )
-
-                # Store the list of argmax parameter values + the maximum metric
-                # value.
-                maxima[popkey][effectkey][sampkey] = np.zeros(
-                    histshape + (nparams + 1,), dtype=float
-                )
-
-                # Random samples are for the entire hypercube and not for each
-                # marginal. Store the list of parameter values + the metric
-                # value.
-                samples[popkey][effectkey][sampkey] = np.zeros(
-                    (int(nruns * sampling['p']), nparams + 1),
-                    dtype=float
-                )
-
-                # How many samples we have left to compute. Decrements. Note
-                # that this may not actually reach zero, so it'll be important
-                # to check it when plotting. Samples will start from the end,
-                # as they are placed at samplesleft.
-                samplesleft[popkey][effectkey][sampkey] = int(
-                    nruns * sampling['p']
-                )
-
-    return dict(
-        counts=counts,
-        maxima=maxima,
-        samples=samples,
-        samplesleft=samplesleft
-    )
+import utilities
 
 def sum_products(config):
     """
-
     :param config:
     """
 
@@ -185,62 +24,52 @@ def sum_products(config):
 
     popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
     samplings = config['args']['samplings']
-    storage_arrays = zero_storage_arrays(config)
+    storage_arrays = utilities.zero_storage_arrays(config)
     counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
         'counts', 'maxima', 'samples', 'samplesleft'
     )]
 
-    cfns = glob.glob(cacheprefix + '-*-*.pickle')
     # Gather statistic arrays in each run's cache file.
-    for i, cfn in enumerate(cfns):
-        cf = cPickle.load(open(cfn))
-        print '\t%d / %d: %s' % (i, len(cfns), cfn)
+    for sampkey, sampling in samplings.iteritems():
+        cfns = glob.glob(cacheprefix + '-%s-*-*.pickle' % sampkey)
 
-        for popkey in popkeys:
-            for effectkey in effectkeys:
-                for sampkey, sampling in samplings.iteritems():
+        for i, cfn in enumerate(cfns):
+            cf = cPickle.load(open(cfn))
+            print '\t%d / %d: %s' % (i, len(cfns), cfn)
+
+            for popkey in popkeys:
+                for effectkey in effectkeys:
                     # Shorthand for global arrays over all cached values.
-                    gsampsleft = samplesleft[popkey][effectkey][sampkey]
-                    gsamps = samples[popkey][effectkey][sampkey]
-                    gcounts = counts[popkey][effectkey][sampkey]
-                    gmaxima = maxima[popkey][effectkey][sampkey]
+                    gsampsleft = samplesleft[sampkey][popkey][effectkey]
+                    gsamps = samples[sampkey][popkey][effectkey]
+                    gcounts = counts[sampkey][popkey][effectkey]
+                    gmaxima = maxima[sampkey][popkey][effectkey]
 
                     # Shorthand for arrays local to this set of cached values.
-                    csampsleft = cf['samplesleft'][popkey][effectkey][sampkey]
-                    csamps = cf['samples'][popkey][effectkey][sampkey]
-                    ccounts = cf['counts'][popkey][effectkey][sampkey]
+                    csampsleft = cf['samplesleft'][popkey][effectkey]
+                    csamps = cf['samples'][popkey][effectkey]
+                    ccounts = cf['counts'][popkey][effectkey]
 
-                    cmaxima = cf['maxima'][popkey][effectkey][sampkey]
+                    cmaxima = cf['maxima'][popkey][effectkey]
                     ncsamps = len(csamps) - csampsleft
 
                     # Increment histograms.
-                    try:
-                        gcounts += ccounts
-                    except ValueError:
-                        print cfn
-                        print gcounts.shape, ccounts.shape
-                        exit(-1)
+                    gcounts += ccounts
 
                     # Gather samples.
                     if ncsamps:
                         gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
-                        samplesleft[popkey][effectkey][sampkey] -= ncsamps
+                        samplesleft[sampkey][popkey][effectkey] -= ncsamps
 
                     # Gather maxima.
                     joined = np.array([gmaxima, cmaxima])
 
-                    try:
-                        argmaxima = np.tile(
-                            np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
-                            (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
-                        )
-                    except ValueError:
-                        print cfn
-                        print id(maxima[popkey][effectkey][sampkey])
-                        print joined[..., -1]
-                        exit(-1)
+                    argmaxima = np.tile(
+                        np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
+                        (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
+                    )
 
-                    maxima[popkey][effectkey][sampkey] = np.where(
+                    maxima[sampkey][popkey][effectkey] = np.where(
                         argmaxima, gmaxima, cmaxima
                     )
 
@@ -251,7 +80,12 @@ def sum_products(config):
         open(cachepath, 'w')
     )
 
-def plot_marginals(config):
+def plot_marginals(
+        config,
+        show_marginals=True,
+        show_bins=False,
+        percentiles=(5, 50, 95)
+):
     """
     TODO: This.
 
@@ -283,53 +117,120 @@ def plot_marginals(config):
             projection='3d'
         )
 
-        pp.ylabel(vk1)
-        pp.xlabel(vk2)
         vk1r, vk2r = [config['params'][vkn]['range'] for vkn in vk1, vk1]
 
-        pp.ylim(np.amin(vk1r), np.amax(vk1r))
-        pp.xlim(np.amin(vk2r), np.amax(vk2r))
-
         sampkey = 'zero_one'
+        sampling = config['args']['samplings'][sampkey]
         samprange = sampling['range']
         sampres = sampling['resolution']
 
-        hist = hists[sampkey][vki1, vki2]     # res x res x nbins
-        mx, my, mz = np.meshgrid(
-            vk1r,
-            vk2r,
-            np.linspace(samprange[0], samprange[1], sampres)
+        hist = np.array(hists[sampkey][vki1, vki2], dtype=float)
+        histf = hist.flatten()
+
+        zs = np.linspace(float(samprange[0]), float(samprange[1]), sampres)
+
+        mx, my, mz = np.meshgrid(vk2r, vk1r, zs)
+        mxf, myf, mzf = [a.flatten() for a in mx, my, mz]
+
+        pzs = np.tile(
+            np.array([
+                scipy.stats.percentileofscore(histf, score) for score in zs
+            ])[np.newaxis, np.newaxis, :],
+            (len(vk2r), len(vk1r), 1)
         )
-        ax.scatter(mx, my, mz, s=hist / np.amax(hist) * 10, alpha=0.5)
+        pzsf = pzs.flatten()
+
+        mxf, myf, mzf, pzsf, histf = [
+            a[histf != 0] for a in mxf, myf, mzf, pzsf, histf
+        ]
+
+        cmap = matplotlib.cm.get_cmap('jet')
+        maxcount = float(np.amax(hist))
+
+        ax.set_xlim(np.amin(vk2r), np.amax(vk2r))
+        ax.set_ylim(np.amin(vk1r), np.amax(vk1r))
+        ax.set_zlim(np.amin(mzf), np.amax(mzf))
+        ax.set_xlabel(vk2)
+        ax.set_ylabel(vk1)
         ax.set_zlabel('%s / %s' % (popkey, effectkey))
 
-        # cumsums = np.cumsum(hist, axis=2)
-        # percs = 1, 5, 25, 50, 75, 95, 99
-        # colors = [matplotlib.cm.spectral(p) for p in percs]
-        # sampling = config['args']['samplings'][sampkey]
-        # for perc, color in zip(percs, colors):
-        #    bin_idx = np.array([
-        #        [
-        #            np.searchsorted(cumsums[vk1d][vk2d], np.percentile(cumsums, perc))
-        #            for vk2d in range(cumsums.shape[1])
-        #        ]
-        #        for vk1d in range(cumsums.shape[0])
-        #    ])
-        #
-        #    vals = np.interp(
-        #        bin_idx, [0, sampling['resolution'] - 1], sampling['range']
-        #    )
+        if show_marginals:
+            xmy, xmz = np.meshgrid(vk1r, zs)
+            xmx = np.sum(hist, axis=0).T / np.amax(hist)
+            ax.contourf(
+                xmx, xmy, xmz,
+                zdir='x',
+                offset=vk2r[0] - np.diff(vk2r)[0] / 10.0,
+                cmap=cmap,
+                alpha=0.5
+            )
 
-        #    ax.plot_wireframe(mx, my, vals, color=color, alpha=0.5, label=perc)
-        #    ax.set_zlabel('%s / %s' % (popkey, effectkey))
-        #    ax.legend()
+            ymx, ymz = np.meshgrid(vk2r, zs)
+            ymy = np.sum(hist, axis=1).T / np.amax(hist)
+            ax.contourf(
+                ymx, ymy, ymz,
+                zdir='y',
+                offset=vk1r[-1] + np.diff(vk1r)[-1] / 10.0,
+                cmap=cmap,
+                alpha=0.5
+            )
+
+            zmx, zmy = np.meshgrid(vk2r, vk1r)
+            zmz = np.sum(hist, axis=2) / np.amax(hist)
+            ax.contourf(
+                zmx, zmy, zmz,
+                zdir='z',
+                offset=zs[0] - np.diff(zs)[0] / 10.0,
+                cmap=cmap,
+                alpha=0.5
+            )
+
+        if show_bins:
+            ax.scatter(
+                mxf, myf, mzf,
+                s=np.log10(1 + histf / maxcount) * 1000,
+                c=cmap(pzsf / np.amax(pzsf)),
+                lw=0,
+                alpha=1.0
+            )
+
+        cumsums = np.cumsum(hist, axis=2)
+        cumsums /= np.amax(cumsums, axis=2)[:, :, np.newaxis]
+
+        if percentiles is not None and len(percentiles):
+            percentiles = np.array(percentiles) / 100
+            colors = cmap(percentiles)
+
+            for perc, color in zip(percentiles, colors):
+                vals = np.interp(
+                    np.array([
+                        [
+                            np.searchsorted(cumsums[vk1d, vk2d], perc)
+                            for vk2d in range(cumsums.shape[1])
+                        ]
+                        for vk1d in range(cumsums.shape[0])
+                    ]),
+                    [0, sampling['resolution'] - 1],
+                    sampling['range']
+                )
+
+                ax.plot_trisurf(
+                    zmx.flatten(),
+                    zmy.flatten(),
+                    vals.flatten(),
+                    color=color,
+                    alpha=0.5,
+                    label=perc
+                )
+
+            ax.legend()
 
     pp.savefig('%s-zero-one.png' % cacheprefix)
 
 def main():
     """Main."""
 
-    plot_marginals(open_config(sys.argv[1]))
+    plot_marginals(utilities.config_defaults(sys.argv[1]))
 
 if __name__ == '__main__':
     main()

@@ -30,13 +30,12 @@ TODO: May be smart to otherwise be using sparse arrays.
 
 import os
 import sys
-import json
+import time
 import pprint
 import cPickle
 import operator
 import functools
 import itertools
-import collections
 
 import numpy as np
 
@@ -46,6 +45,13 @@ import utilities
 model = models.parasitism.get_model('nbd(2)')
 model.lambdify_ss = False
 printer = pprint.PrettyPrinter()
+
+def ncalcs(config):
+    return functools.reduce(
+        operator.mul,
+        [len(param['range']) for param in config['params'].values()],
+        1
+    )
 
 def noise_cov(ndict):
     """
@@ -88,8 +94,8 @@ def compute_metrics(params):
     for effects in ['h', 'p']:
         pden, nden = utilities.dict_split(params, ['SpSh', 'Chh', 'Cpp'])
         pnum, nnum = utilities.dict_split(params, ['SpSh', 'Chh', 'Cpp'])
-        pnum['m{0}'.format(effects)] = 0
-        nnum['C{0}{0}'.format(effects)] = 0
+        pnum['m%s' % effects] = 0
+        nnum['C%s%s' % ((effects,) * 2)] = 0
 
         cnum, cden = tuple([
             models.utilities.correlation(model.calculate_covariance(
@@ -119,7 +125,7 @@ def zero_storage_arrays(config):
         1
     )
 
-    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
+    paramres, samplings = [config['args'][k] for k in 'resolution', 'samplings']
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
     # returned in compute_metrics and have the structure of these histograms
@@ -134,48 +140,48 @@ def zero_storage_arrays(config):
 
     # Construct the statistic matrices.
     # varindex1, varindex2, paramindex1, paramindex2, ...
-    histshape = (nvarkeys, nvarkeys, res, res)
+    histshape = (nvarkeys, nvarkeys, paramres, paramres)
 
     counts, maxima, samples, samplesleft = [
         {
-            popkey: {
-                effectkey: {
-                    sampkey: None
-                    for sampkey in samplings
-                } for effectkey in effectkeys
-            } for popkey in popkeys
+            sampkey: {
+                popkey: {
+                    effectkey: None
+                    for effectkey in effectkeys
+                } for popkey in popkeys
+            } for sampkey in samplings
         }
         for _ in range(4)
     ]
 
-    for popkey in popkeys:
-        for effectkey in effectkeys:
-            for sampkey, sampling in samplings.iteritems():
-                counts[popkey][effectkey][sampkey] = np.zeros(
-                    histshape + (sampling['resolution'],), dtype=int
+    for sampkey, sampling in samplings.iteritems():
+        nsamples = int(sampling['nsamples'])
+        sampres = sampling['resolution']
+
+        for popkey in popkeys:
+            for effectkey in effectkeys:
+                counts[sampkey][popkey][effectkey] = np.zeros(
+                    histshape + (sampres,), dtype=int
                 )
 
                 # Store the list of argmax parameter values + the maximum metric
                 # value.
-                maxima[popkey][effectkey][sampkey] = np.zeros(
+                maxima[sampkey][popkey][effectkey] = np.zeros(
                     histshape + (nparams + 1,), dtype=float
                 )
 
                 # Random samples are for the entire hypercube and not for each
                 # marginal. Store the list of parameter values + the metric
                 # value.
-                samples[popkey][effectkey][sampkey] = np.zeros(
-                    (int(nruns * sampling['p']), nparams + 1),
-                    dtype=float
+                samples[sampkey][popkey][effectkey] = np.zeros(
+                    (nsamples, nparams + 1), dtype=float
                 )
 
                 # How many samples we have left to compute. Decrements. Note
                 # that this may not actually reach zero, so it'll be important
                 # to check it when plotting. Samples will start from the end,
                 # as they are placed at samplesleft.
-                samplesleft[popkey][effectkey][sampkey] = int(
-                    nruns * sampling['p']
-                )
+                samplesleft[sampkey][popkey][effectkey] = nsamples
 
     return dict(
         counts=counts,
@@ -189,7 +195,8 @@ def param_product(config):
     Return an iterator for a product of all parameter values given a config
     dictionary.
 
-    :param config: (dict) configuration dictionary provided by open_config.
+    :param config: (dict) configuration dictionary provided by
+        utilities.config_defaults.
     :return: (iterable) iterator of all combinations of parameter values.
     """
 
@@ -202,16 +209,17 @@ def run_slice(config, start, stop):
     """
     Where the action is.
 
-    :param config: (dict) configuration dictionary provided by openconfig.
+    :param config: (dict) configuration dictionary provided by
+        utilities.config_defaults.
     :param start: (int) start index in the list of combos of param values.
     :param stop: (int) stop index (uninclusive) in the list of combos of param
         values.
     """
 
-    print start, stop
+    print start
+    print stop
 
-    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
-    cachepath = '%s-%d-%d.pickle' % (cacheprefix, start, stop)
+    bt = time.clock()
 
     params = config['params']
     paramkeys = config['props']['paramkeys']
@@ -248,18 +256,19 @@ def run_slice(config, start, stop):
 
         metrics = compute_metrics(paramset)
 
-        for popkey, effectkey, sampkey in itertools.product(
-                popkeys, effectkeys, samplings
+        for sampkey, popkey, effectkey in itertools.product(
+                samplings, popkeys, effectkeys
         ):
-            ind_samplesleft = samplesleft[popkey][effectkey][sampkey]
-            ind_samples = samples[popkey][effectkey][sampkey]
-            ind_maxima = maxima[popkey][effectkey][sampkey]
-            ind_counts = counts[popkey][effectkey][sampkey]
+            ind_samplesleft = samplesleft[sampkey][popkey][effectkey]
+            ind_samples = samples[sampkey][popkey][effectkey]
+            ind_maxima = maxima[sampkey][popkey][effectkey]
+            ind_counts = counts[sampkey][popkey][effectkey]
             metric = metrics[popkey][effectkey]
 
-            brange, bres, incmin, recordp = [samplings[sampkey][k] for k in (
-                'range', 'resolution', 'inclmin', 'p'
+            brange, bres, incmin, nsamples = [samplings[sampkey][k] for k in (
+                'range', 'resolution', 'inclmin', 'nsamples'
             )]
+            recordp = float(nsamples) / (stop - start)
 
             bmin, bmax = brange[0], brange[-1]
 
@@ -276,11 +285,11 @@ def run_slice(config, start, stop):
                 )
 
             # Randomly store some fraction of values for each sampling range.
-            if (samplesleft[popkey][effectkey][sampkey] > 0) and (
+            if (samplesleft[sampkey][popkey][effectkey] > 0) and (
                 np.random.rand(0, 100) <= (recordp * 100)
             ):
                 ind_samples[ind_samplesleft] = paramset.values() + [metric]
-                samplesleft[popkey][effectkey][sampkey] -= 1
+                samplesleft[sampkey][popkey][effectkey] -= 1
 
             # Store statistics for each marginal parameter combination.
             for vkeys in itertools.product(varkeys, repeat=2):
@@ -299,100 +308,36 @@ def run_slice(config, start, stop):
                 if np.isfinite(binindex):
                     ind_counts[vkis + vkargis + (binindex,)] += 1
 
-    cPickle.dump(
-        dict(
-            counts=counts,
-            maxima=maxima,
-            samples=samples,
-            samplesleft=samplesleft
-        ),
-        open(cachepath, 'w')
-    )
-
-def open_config(configpath=None):
-    """
-    Open a configuration file and reformat it.
-
-    :param configpath: path to configuration JSON file.
-    :return: (dict) Configuration dictionary with parameter ranges replaced with
-        lists of parameter values and a few extra keys:
-        file:
-            dir: directory to store cached files.
-            name: filename prefix for cached files.
-            slice_size: number of computations per individual run.
-        props:
-            paramkeys: ordered list of parameter names.
-            varkeys: ordered list of parameter names for those that vary.
-    """
-
-    if configpath is not None:
-        configdir, configfile = os.path.split(configpath)
-        configname = os.path.splitext(configfile)[0]
-        config = json.load(open(configpath))
-        config.setdefault('file', dict())
-        config['file'].setdefault('dir', configdir)
-        config['file'].setdefault('name', configname)
-        config['file'].setdefault('slice_size', 20)
-    else:
-        config = dict(
-            file=dict(
-                dir='cache/',
-                name='fracsync-marginals-default',
-                slice_size=20
+    for sampkey in samplings:
+        cPickle.dump(
+            dict(
+                counts=counts[sampkey],
+                maxima=maxima[sampkey],
+                samples=samples[sampkey],
+                samplesleft=samplesleft[sampkey]
             ),
-            args=dict(
-                resolution=10,
-                samplings=dict(
-                    zero_one=dict(range=[0,1], res=100, inclmin=True, p=0),
-                    one_ten=dict(
-                        range=[1,10], res=100, inclmin=False, p=0.01
+            open(
+                '%s-%s-%d-%d.pickle' % (
+                    os.path.join(
+                        config['file']['dir'],
+                        config['file']['name']
                     ),
-                    gt_ten=dict(range=[10,], res=1, inclmin=False, p=0.01)
-                )
-            ),
-            params=dict(
-                r=dict(default=2.0, range=[1.1, 4]),
-                a=dict(default=1.0),
-                c=dict(default=1.0),
-                k=dict(default=0.5, range=[0.1, 0.9]),
-                mh=dict(default=0.25, range=[0, 0.5]),
-                mp=dict(default=0.25, range=[0, 0.5]),
-                SpSh=dict(default=1.0, range=[0, 10]),
-                Chh=dict(default=0.5, range=[0, 1]),
-                Cpp=dict(default=0.5, range=[0, 1])
+                    sampkey,
+                    start,
+                    stop
+                ),
+                'w'
             )
         )
 
-    # Make sure the params are ordered consistently so we can easily slice
-    # combinations without having to actually store info regarding to which
-    # parameters each computation should use.
-    config['params'] = collections.OrderedDict(config['params'])
-    res = config['args']['resolution']
-
-    config['props'] = dict(varkeys=[])
-
-    for p in config['params'].itervalues():
-        p.setdefault('resolution', res)
-        p.setdefault('range', (p['default'], p['default']))
-
-        if p['range'][0] != p['range'][1]:
-            p['range'] = np.linspace(p['range'][0], p['range'][1], res)
-        else:
-            p['range'] = [p['default']]
-
-    config['props'] = dict(paramkeys=config['params'].keys())
-    config['props']['varkeys'] = [
-        k for k in config['props']['paramkeys'] if len(config['params'][k]['range']) > 1
-    ]
-
-    return config
+    print time.clock() - bt
 
 def generate_runs(config, runtype='qsub'):
     """
     Generate a qsub file that runs a bunch of slices. Saves a shell script in
     the parent directory of the configuration file.
 
-    :param config: (dict) configuration dict opened with open_config.
+    :param config: (dict) configuration dict opened with config_defaults.
     :param type: (str) 'qsub' for a qsub configuration file or 'sh' for a simple
         shell script that launches a bunch of processes.
     """
@@ -401,9 +346,6 @@ def generate_runs(config, runtype='qsub'):
         config['file'][k] for k in 'dir', 'name', 'slice_size'
     ]
     config_prefix = os.path.join(config_dir, config_name)
-    ncalcs = functools.reduce(
-        operator.mul, [len(param['range']) for param in config['params'].values()], 1
-    )
 
     if runtype is 'sh':
         script_path = config_prefix + '-runs.sh'
@@ -423,7 +365,7 @@ def generate_runs(config, runtype='qsub'):
         outfile = open(job_path, 'w')
         outfile.writelines([
             '#PBS -N %s\n' % config['file']['name'],
-            '#PBS -l nodes=1:ppn=1,mem=1000m,walltime=24:00:00\n',
+            '#PBS -l nodes=1,mem=1000m,walltime=1:00:00\n',
             '#PBS -m n\n',
             '#PBS -S /bin/bash\n',
             '#PBS -d %s\n' % os.getcwd(),
@@ -447,7 +389,7 @@ def generate_runs(config, runtype='qsub'):
 def main():
     """Main."""
 
-    config = open_config(sys.argv[2])
+    config = utilities.config_defaults(sys.argv[2])
 
     if sys.argv[1] == 'run' and len(sys.argv) == 5:
         start, stop = sys.argv[3:]
