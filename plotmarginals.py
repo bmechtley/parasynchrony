@@ -313,7 +313,7 @@ def plot_marginals(config):
 
             ax.plot_surface(mx, my, vals, color=color, alpha=0.5, label=perc)
             ax.set_zlabel('%s / %s' % (popkey, effectkey))
-            pp.colorbar()
+            ax.legend()
 
     pp.savefig('%s-zero-one.png' % cacheprefix)
 
