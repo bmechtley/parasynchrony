@@ -188,6 +188,8 @@ def zero_storage_arrays(config):
     for popkey in popkeys:
         for effectkey in effectkeys:
             for sampkey, sampling in samplings.iteritems():
+                nsamples = int(sampling['nsamples'])
+
                 counts[popkey][effectkey][sampkey] = np.zeros(
                     histshape + (sampling['resolution'],), dtype=int
                 )
@@ -202,17 +204,14 @@ def zero_storage_arrays(config):
                 # marginal. Store the list of parameter values + the metric
                 # value.
                 samples[popkey][effectkey][sampkey] = np.zeros(
-                    (int(nruns * sampling['p']), nparams + 1),
-                    dtype=float
+                    (nsamples, nparams + 1), dtype=float
                 )
 
                 # How many samples we have left to compute. Decrements. Note
                 # that this may not actually reach zero, so it'll be important
                 # to check it when plotting. Samples will start from the end,
                 # as they are placed at samplesleft.
-                samplesleft[popkey][effectkey][sampkey] = int(
-                    nruns * sampling['p']
-                )
+                samplesleft[popkey][effectkey][sampkey] = nsamples
 
     return dict(
         counts=counts,
