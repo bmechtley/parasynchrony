@@ -5,9 +5,15 @@
   "args": {
     "resolution": 5,
     "samplings": {
-      "zero_one": {"range": [0, 1], "resolution": 100, "inclmin": true, "p": 0},
-      "one_ten": {"range": [1, 10], "resolution": 100, "inclmin": true, "p": 0.01},
-      "gt_ten": {"range": [10], "resolution": 1, "inclmin": false, "p": 0.01}
+      "zero_one": {
+        "range": [0, 1], "resolution": 100, "inclmin": true, "nsamples": 0
+      },
+      "one_ten": {
+        "range": [1, 10], "resolution": 100, "inclmin": true, "nsamples": 100
+      },
+      "gt_ten": {
+        "range": [10], "resolution": 1, "inclmin": false, "nsamples": 100
+      }
     }
   },
   "params": {
