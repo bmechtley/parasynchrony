@@ -226,8 +226,9 @@ def sum_products(config):
                         gsamps=gsamps.shape
                     )
 
-                    gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
-                    samplesleft[popkey][effectkey][sampkey] -= ncsamps
+                    if ncsamps:
+                        gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
+                        samplesleft[popkey][effectkey][sampkey] -= ncsamps
 
                     # Gather maxima.
                     joined = np.array([gmaxima, cmaxima])
