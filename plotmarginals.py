@@ -269,12 +269,12 @@ def plot_marginals(config):
     hists = gathered['counts']['h']['Rhh']
 
     varkeys, paramkeys = [config['props'][k] for k in 'varkeys', 'paramkeys']
-    pp.figure(figsize=(len(varkeys) * 15, len(varkeys) * 10))
+    fig = pp.figure(figsize=(len(varkeys) * 15, len(varkeys) * 10))
 
     for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
         itertools.combinations_with_replacement(enumerate(varkeys), 2)
     ):
-        ax = pp.add_subplot(
+        ax = fig.add_subplot(
             len(varkeys),
             len(varkeys),
             vki1 * len(varkeys) + vki2,
