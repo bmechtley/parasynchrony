@@ -182,7 +182,7 @@ def zero_storage_arrays(config):
     for popkey in popkeys:
         for effectkey in effectkeys:
             for sampkey, sampling in samplings.iteritems():
-                nsamples, sampres = int(sampling['nsamples'])
+                nsamples = int(sampling['nsamples'])
                 sampres = sampling['resolution']
 
                 counts[sampkey][popkey][effectkey] = np.zeros(
