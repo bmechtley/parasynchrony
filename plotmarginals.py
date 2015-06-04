@@ -231,6 +231,7 @@ def sum_products(config):
                         samplesleft[popkey][effectkey][sampkey] -= ncsamps
 
                     # Gather maxima.
+                    print dict(gmaxima=gmaxima.shape, cmaxima=cmaxima.shape)
                     joined = np.array([gmaxima, cmaxima])
 
                     try:
