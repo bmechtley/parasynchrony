@@ -39,10 +39,6 @@ import functools
 import itertools
 import collections
 
-import matplotlib.pyplot as pp
-import matplotlib.cm
-from mpl_toolkits.mplot3d import Axes3D
-
 import numpy as np
 
 import models
@@ -188,76 +184,6 @@ def zero_storage_arrays(config):
         samples=samples,
         samplesleft=samplesleft
     )
-
-def sum_products(config):
-    """
-
-    :param config:
-    """
-
-    print 'Collecting data from saved runs.'
-
-    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
-
-    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
-    samplings = config['args']['samplings']
-    storage_arrays = zero_storage_arrays(config)
-    counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
-        'counts', 'maxima', 'samples', 'samplesleft'
-    )]
-
-    # Gather statistic arrays in each run's cache file.
-    for cfn in glob.glob(cacheprefix + '-*-*.pickle'):
-        cf = cPickle.load(open(cfn))
-        for popkey in popkeys:
-            for effectkey in effectkeys:
-                for sampkey, sampling in samplings.iteritems():
-                    # Shorthand for global arrays over all cached values.
-                    gsampsleft = samplesleft[popkey][effectkey][sampkey]
-                    gsamps = samples[popkey][effectkey][sampkey]
-                    gcounts = counts[popkey][effectkey][sampkey]
-                    gmaxima = maxima[popkey][effectkey][sampkey]
-
-                    # Shorthand for arrays local to this set of cached values.
-                    csampsleft = cf['samplesleft'][popkey][effectkey][sampkey]
-                    csamps = cf['samples'][popkey][effectkey][sampkey]
-                    ccounts = cf['counts'][popkey][effectkey][sampkey]
-
-                    cmaxima = cf['maxima'][popkey][effectkey][sampkey]
-                    ncsamps = len(csamps) - csampsleft
-
-                    # Increment histograms.
-                    try:
-                        gcounts += ccounts
-                    except ValueError:
-                        print cfn
-                        print gcounts.shape, ccounts.shape
-                        exit(-1)
-
-                    # Gather samples.
-                    gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
-                    samplesleft[popkey][effectkey][sampkey] -= ncsamps
-
-                    # Gather maxima.
-                    joined = np.array([gmaxima, cmaxima])
-
-                    try:
-                        argmaxima = np.argmax(joined[..., -1], axis=0)
-                    except ValueError:
-                        print cfn
-                        print id(maxima[popkey][effectkey][sampkey])
-                        print joined[..., -1]
-                        exit(-1)
-
-                    maxima[popkey][effectkey][sampkey] = joined[argmaxima]
-
-    cachepath = '%s-full.pickle' % cacheprefix
-
-    cPickle.dump(
-        dict(counts=counts, maxima=maxima, samples=samples),
-        open(cachepath, 'w')
-    )
-
 
 def param_product(config):
     """
@@ -519,60 +445,6 @@ def generate_runs(config, runtype='qsub'):
 
         outfile.close()
 
-def plot_marginals(config):
-    """
-    TODO: This.
-
-    :param config:
-    """
-
-    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
-    cachefile = '%s-full.pickle' % cacheprefix
-
-    if not os.path.exists(cachefile):
-        sum_products(config)
-
-    print 'Plotting marginals.'
-
-    gathered = cPickle.load(open('%s-full.pickle' % cacheprefix))
-    hists = gathered['counts']['h']['Rhh']
-
-    varkeys, paramkeys = [config['props'][k] for k in 'varkeys', 'paramkeys']
-    pp.figure(len(varkeys) * 15, len(varkeys) * 10)
-
-    for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
-        itertools.combinations_with_replacement(enumerate(varkeys), repeat=2)
-    ):
-        ax = pp.add_subplot(
-            len(varkeys),
-            len(varkeys),
-            vki1 * len(varkeys) + vki2,
-            projection='3d'
-        )
-
-        pp.ylabel(vk1)
-        pp.xlabel(vk2)
-        pp.ylim(np.amin(config['params'][vk1]), np.amax(config['params'][vk1]))
-        pp.xlim(np.amin(config['params'][vk2]), np.amax(config['params'][vk2]))
-        mx, my = np.meshgrid(config['params'][vk1], config['params'][vk2])
-
-        hist = hists['zero_one'][vki1, vki2]     # res x res x nbins
-        cumsums = np.cumsum(hist, axis=2)
-
-        percs = 1, 5, 25, 50, 75, 95, 99
-        colors = [matplotlib.cm.spectral(p) for p in percs]
-        sampling = config['args']['samplings']['zero_one']
-
-        for perc, color in zip(percs, colors):
-            bin_idx = np.searchsorted(cumsums, np.percentile(cumsums, perc))
-            vals = np.interp(
-                bin_idx, [0, sampling['resolution'] - 1], sampling['range']
-            )
-
-            ax.plot_surface(mx, my, vals, color=color, alpha=0.5)
-
-    pp.savefig('%s-zero-one.png' % cacheprefix)
-
 def main():
     """Main."""
 
@@ -583,8 +455,6 @@ def main():
         run_slice(config, int(start), int(stop))
     elif sys.argv[1] == 'genruns' and len(sys.argv) == 3:
         generate_runs(config, runtype='qsub')
-    elif sys.argv[1] == 'plot' and len(sys.argv) == 3:
-        plot_marginals(config)
     else:
         print 'usage: python marginals.py {genruns, runs, plot}', \
             'config.json [start] [stop]'
