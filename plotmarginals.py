@@ -193,7 +193,7 @@ def sum_products(config):
     # Gather statistic arrays in each run's cache file.
     for i, cfn in enumerate(cfns):
         cf = cPickle.load(open(cfn))
-        print '%d / %d: %s' % (i, len(cfns), cfn)
+        print '\t%d / %d: %s' % (i, len(cfns), cfn)
 
         for popkey in popkeys:
             for effectkey in effectkeys:
@@ -269,7 +269,7 @@ def plot_marginals(config):
     hists = gathered['counts']['h']['Rhh']
 
     varkeys, paramkeys = [config['props'][k] for k in 'varkeys', 'paramkeys']
-    pp.figure(len(varkeys) * 15, len(varkeys) * 10)
+    pp.figure(figsize=(len(varkeys) * 15, len(varkeys) * 10))
 
     for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
         itertools.combinations_with_replacement(enumerate(varkeys), repeat=2)
