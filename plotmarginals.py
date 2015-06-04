@@ -236,8 +236,8 @@ def sum_products(config):
 
                     try:
                         argmaxima = np.tile(
-                            np.argmax(joined[..., -1], axis=0),
-                            gmaxima.shape[-1]
+                            np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
+                            gmaxima.shape
                         )
 
                         print dict(joined=joined.shape, argmaxima=argmaxima.shape)
