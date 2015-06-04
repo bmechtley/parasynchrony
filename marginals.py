@@ -102,8 +102,8 @@ def compute_metrics(params):
             ))
             for p, n in [(pnum, nnum), (pden, nden)]
         ])
-        cfrac = abs(cnum) / abs(cden)
 
+        cfrac = abs(cnum) / abs(cden)
         metrics[effects] = dict(Rhh=cfrac[0, 1], Rpp=cfrac[2, 3])
 
     return metrics
@@ -506,7 +506,7 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -o /users/mechtley/logs/%s.out\n' % config['file']['name'],
             '#PBS -t 0-%d\n' % ((ncalcs + 1) / slice_size),
             ' '.join([
-                'python marginals.py run',
+                'python -W ignore marginals.py run',
                 os.path.join(
                     os.getcwd(),
                     config['file']['dir'],
