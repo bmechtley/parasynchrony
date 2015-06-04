@@ -1,6 +1,6 @@
 {
   "file": {
-    "slice_size": 20
+    "slice_size": 100
   },
   "args": {
     "resolution": 5,
