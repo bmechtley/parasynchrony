@@ -267,7 +267,8 @@ def plot_marginals(config):
     print 'Plotting marginals.'
 
     gathered = cPickle.load(open('%s-full.pickle' % cacheprefix))
-    hists = gathered['counts']['h']['Rhh']
+    popkey, effectkey = 'h', 'Rhh'
+    hists = gathered['counts'][popkey][effectkey]
 
     varkeys, paramkeys = [config['props'][k] for k in 'varkeys', 'paramkeys']
     fig = pp.figure(figsize=(len(varkeys) * 15, len(varkeys) * 10))
@@ -298,8 +299,6 @@ def plot_marginals(config):
         sampling = config['args']['samplings']['zero_one']
 
         for perc, color in zip(percs, colors):
-            print cumsums.shape
-
             bin_idx = np.array([
                 [
                     np.searchsorted(cumsums[vk1d][vk2d], np.percentile(cumsums, perc))
@@ -313,6 +312,7 @@ def plot_marginals(config):
             )
 
             ax.plot_surface(mx, my, vals, color=color, alpha=0.5)
+            ax.set_zlabel('%s / %s' % (popkey, effectkey))
 
     pp.savefig('%s-zero-one.png' % cacheprefix)
 
