@@ -504,15 +504,17 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -d %s\n' % os.getcwd(),
             '#PBS -e /users/mechtley/logs/%s.err\n' % config['file']['name'],
             '#PBS -o /users/mechtley/logs/%s.out\n' % config['file']['name'],
-            '#PBS -J 0-%d:%d\n' % (ncalcs, slice_size),
+            '#PBS -J 0-%d\n' % (ncalcs + 1) / slice_size,
             ' '.join([
                 'python marginals.py run',
-                '%s ${PBS_ARRAY_INDEX} (${PBS_ARRAY_INDEX}+%d)\n' % (
+                '%s (${PBS_ARRAY_INDEX}*%d) (${PBS_ARRAY_INDEX}*%d+%d)\n' % (
                     os.path.join(
                         os.getcwd(),
                         config['file']['dir'],
                         config['file']['name'] + '.json'
                     ),
+                    slice_size,
+                    slice_size,
                     slice_size
                 )
             ])
