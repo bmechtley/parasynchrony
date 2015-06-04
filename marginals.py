@@ -510,7 +510,7 @@ def plot_marginals(config):
     gathered = cPickle.load(open('%s-full.pickle' % cacheprefix))
     hists = gathered['counts']['h']['Rhh']
 
-    varkeys, paramkeys = [config['file'][k] for k in 'varkeys', 'paramkeys']
+    varkeys, paramkeys = [config['props'][k] for k in 'varkeys', 'paramkeys']
     pp.figure(len(varkeys) * 15, len(varkeys) * 10)
 
     for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
