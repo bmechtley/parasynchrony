@@ -218,7 +218,12 @@ def sum_products(config):
                         exit(-1)
 
                     # Gather samples.
-                    print ncsamps, gsampsleft
+                    print dict(
+                        gsampsleft=gsampsleft,
+                        ncsamps=ncsamps,
+                        csampsleft=csampsleft.shape,
+                    )
+
                     gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
                     samplesleft[popkey][effectkey][sampkey] -= ncsamps
 
