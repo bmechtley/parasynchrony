@@ -243,7 +243,9 @@ def sum_products(config):
                         print joined[..., -1]
                         exit(-1)
 
-                    maxima[popkey][effectkey][sampkey] = joined[argmaxima]
+                    maxima[popkey][effectkey][sampkey] = np.where(
+                        argmaxima, gmaxima, gmaxima
+                    )
 
     cachepath = '%s-full.pickle' % cacheprefix
 
