@@ -300,7 +300,14 @@ def plot_marginals(config):
         for perc, color in zip(percs, colors):
             print cumsums.shape
 
-            bin_idx = np.searchsorted(cumsums, np.percentile(cumsums, perc))
+            bin_idx = np.array([
+                [
+                    np.searchsorted(cumsums[vk1d][vk2d], np.percentile(cumsums, perc))
+                    for vk2d in range(cumsums.shape[1])
+                ]
+                for vk1d in range(cumsums.shape[0])
+            ])
+
             vals = np.interp(
                 bin_idx, [0, sampling['resolution'] - 1], sampling['range']
             )
