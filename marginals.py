@@ -124,9 +124,7 @@ def zero_storage_arrays(config):
         1
     )
 
-    res, marginaldims, samplings = [config['args'][k] for k in (
-        'resolution', 'marginaldims', 'samplings'
-    )]
+    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
     # returned in compute_metrics and have the structure of these histograms
@@ -140,8 +138,8 @@ def zero_storage_arrays(config):
     nvarkeys = len(varkeys)
 
     # Construct the statistic matrices.
-    # varindex1, varindex2, ..., paramindex1, paramindex2, ...
-    histshape = (nvarkeys,) * marginaldims + (res,) * marginaldims
+    # varindex1, varindex2, paramindex1, paramindex2, ...
+    histshape = (nvarkeys, nvarkeys, res, res)
 
     counts, maxima, samples, samplesleft = [
         {
@@ -308,9 +306,7 @@ def run_slice(config, start, stop):
     counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
         'counts', 'maxima', 'samples', 'samplesleft'
     )]
-    res, marginaldims, samplings = [config['args'][k] for k in (
-        'resolution', 'marginaldims', 'samplings'
-    )]
+    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
     popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
 
     for indices in runslice:
@@ -362,21 +358,21 @@ def run_slice(config, start, stop):
                 samplesleft[popkey][effectkey][sampkey] -= 1
 
             # Store statistics for each marginal parameter combination.
-            for vkeys in itertools.product(varkeys, repeat=marginaldims):
+            for vkeys in itertools.product(varkeys, repeat=2):
                 # indices of varkeys used for marginals.
                 vkis = tuple([varkeyindices[vk] for vk in vkeys])
+                vkargis = tuple([indices[vki] for vki in vkis])
 
                 # Record the maximum value and its respective parameters for
                 # each marginal.
-                print ind_maxima.shape
-
-                if metric > ind_maxima[vkis + indices]:
-                    ind_maxima[vkis + indices] = [metric] + [
+                if metric > ind_maxima[vkis + vkargis + (-1,)]:
+                    ind_maxima[vkis + vkargis] = [
                         paramset[pk] for pk in paramkeys
-                    ]
+                    ] + [metric]
 
                 # Increment the counts for this marginal.
-                ind_counts[vkis + indices + (binindex,)] += 1
+                if np.isfinite(binindex):
+                    ind_counts[vkis + vkargis + (binindex,)] += 1
 
     cPickle.dump(
         dict(
@@ -427,8 +423,7 @@ def open_config(configpath=None):
                         range=[1,10], res=100, inclmin=False, p=0.01
                     ),
                     gt_ten=dict(range=[10,], res=1, inclmin=False, p=0.01)
-                ),
-                marginaldims=2
+                )
             ),
             params=dict(
                 r=dict(default=2.0, range=[1.1, 4]),
