@@ -279,7 +279,7 @@ def plot_marginals(config):
         ax = fig.add_subplot(
             len(varkeys),
             len(varkeys),
-            vki1 * len(varkeys) + vki2,
+            vki1 * len(varkeys) + vki2 + 1,
             projection='3d'
         )
 
