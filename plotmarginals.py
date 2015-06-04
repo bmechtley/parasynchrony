@@ -288,7 +288,7 @@ def plot_marginals(config):
 
         pp.ylim(np.amin(vk1r), np.amax(vk1r))
         pp.xlim(np.amin(vk2r), np.amax(vk2r))
-        mx, my = np.meshgrid(config['params'][vk1], config['params'][vk2])
+        mx, my = np.meshgrid(vk1r, vk2r)
 
         hist = hists['zero_one'][vki1, vki2]     # res x res x nbins
         cumsums = np.cumsum(hist, axis=2)
