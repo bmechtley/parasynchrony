@@ -31,6 +31,7 @@ TODO: May be smart to otherwise be using sparse arrays.
 import os
 import sys
 import time
+import glob
 import pprint
 import cPickle
 import operator
@@ -388,6 +389,73 @@ def generate_runs(config, runtype='qsub'):
 
         outfile.close()
 
+def gather_runs(config):
+    """
+    :param config:
+    """
+
+    print 'Collecting data from saved runs.'
+
+    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
+
+    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
+    samplings = config['args']['samplings']
+    storage_arrays = utilities.zero_storage_arrays(config)
+    counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
+        'counts', 'maxima', 'samples', 'samplesleft'
+    )]
+
+    # Gather statistic arrays in each run's cache file.
+    for sampkey, sampling in samplings.iteritems():
+        cfns = glob.glob(cacheprefix + '-%s-*-*.pickle' % sampkey)
+
+        for i, cfn in enumerate(cfns):
+            cf = cPickle.load(open(cfn))
+            print '\t%d / %d: %s' % (i, len(cfns), cfn)
+
+            for popkey in popkeys:
+                for effectkey in effectkeys:
+                    # Shorthand for global arrays over all cached values.
+                    gsampsleft = samplesleft[sampkey][popkey][effectkey]
+                    gsamps = samples[sampkey][popkey][effectkey]
+                    gcounts = counts[sampkey][popkey][effectkey]
+                    gmaxima = maxima[sampkey][popkey][effectkey]
+
+                    # Shorthand for arrays local to this set of cached values.
+                    csampsleft = cf['samplesleft'][popkey][effectkey]
+                    csamps = cf['samples'][popkey][effectkey]
+                    ccounts = cf['counts'][popkey][effectkey]
+
+                    cmaxima = cf['maxima'][popkey][effectkey]
+                    ncsamps = len(csamps) - csampsleft
+
+                    # Increment histograms.
+                    gcounts += ccounts
+
+                    # Gather samples.
+                    if ncsamps:
+                        gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
+                        samplesleft[sampkey][popkey][effectkey] -= ncsamps
+
+                    # Gather maxima.
+                    joined = np.array([gmaxima, cmaxima])
+
+                    argmaxima = np.tile(
+                        np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
+                        (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
+                    )
+
+                    maxima[sampkey][popkey][effectkey] = np.where(
+                        argmaxima, gmaxima, cmaxima
+                    )
+
+    cachepath = '%s-full.pickle' % cacheprefix
+
+    cPickle.dump(
+        dict(counts=counts, maxima=maxima, samples=samples),
+        open(cachepath, 'w')
+    )
+
 def main():
     """Main."""
 
@@ -398,6 +466,8 @@ def main():
         run_slice(config, int(start), int(stop))
     elif sys.argv[1] == 'genruns' and len(sys.argv) == 3:
         generate_runs(config, runtype='qsub')
+    elif sys.argv[1] == 'gather' and len(sys.argv) == 3:
+        gather_runs(config)
     else:
         print 'usage: python marginals.py {genruns, runs, plot}', \
             'config.json [start] [stop]'

@@ -1,6 +1,12 @@
+"""
+plotmarginals.py
+parasynchrony
+2015 Brandon Mechtley
+Reuman Lab, Kansas Biological Survey
+"""
+
 import os
 import sys
-import glob
 import cPickle
 import itertools
 
@@ -13,78 +19,11 @@ import matplotlib.cm
 
 import utilities
 
-def sum_products(config):
-    """
-    :param config:
-    """
-
-    print 'Collecting data from saved runs.'
-
-    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
-
-    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
-    samplings = config['args']['samplings']
-    storage_arrays = utilities.zero_storage_arrays(config)
-    counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
-        'counts', 'maxima', 'samples', 'samplesleft'
-    )]
-
-    # Gather statistic arrays in each run's cache file.
-    for sampkey, sampling in samplings.iteritems():
-        cfns = glob.glob(cacheprefix + '-%s-*-*.pickle' % sampkey)
-
-        for i, cfn in enumerate(cfns):
-            cf = cPickle.load(open(cfn))
-            print '\t%d / %d: %s' % (i, len(cfns), cfn)
-
-            for popkey in popkeys:
-                for effectkey in effectkeys:
-                    # Shorthand for global arrays over all cached values.
-                    gsampsleft = samplesleft[sampkey][popkey][effectkey]
-                    gsamps = samples[sampkey][popkey][effectkey]
-                    gcounts = counts[sampkey][popkey][effectkey]
-                    gmaxima = maxima[sampkey][popkey][effectkey]
-
-                    # Shorthand for arrays local to this set of cached values.
-                    csampsleft = cf['samplesleft'][popkey][effectkey]
-                    csamps = cf['samples'][popkey][effectkey]
-                    ccounts = cf['counts'][popkey][effectkey]
-
-                    cmaxima = cf['maxima'][popkey][effectkey]
-                    ncsamps = len(csamps) - csampsleft
-
-                    # Increment histograms.
-                    gcounts += ccounts
-
-                    # Gather samples.
-                    if ncsamps:
-                        gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
-                        samplesleft[sampkey][popkey][effectkey] -= ncsamps
-
-                    # Gather maxima.
-                    joined = np.array([gmaxima, cmaxima])
-
-                    argmaxima = np.tile(
-                        np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
-                        (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
-                    )
-
-                    maxima[sampkey][popkey][effectkey] = np.where(
-                        argmaxima, gmaxima, cmaxima
-                    )
-
-    cachepath = '%s-full.pickle' % cacheprefix
-
-    cPickle.dump(
-        dict(counts=counts, maxima=maxima, samples=samples),
-        open(cachepath, 'w')
-    )
-
 def plot_marginals(
-        config,
-        show_marginals=True,
-        show_bins=False,
-        percentiles=(5, 50, 95)
+    config,
+    show_marginals=True,
+    show_bins=False,
+    percentiles=(5, 50, 95)
 ):
     """
     TODO: This.
@@ -92,15 +31,11 @@ def plot_marginals(
     :param config:
     """
 
-    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
-    cachefile = '%s-full.pickle' % cacheprefix
-
-    if not os.path.exists(cachefile):
-        sum_products(config)
-
     print 'Plotting marginals.'
 
+    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
     gathered = cPickle.load(open('%s-full.pickle' % cacheprefix))
+
     popkey, effectkey = 'h', 'Rhh'
     hists = gathered['counts'][popkey][effectkey]
 
