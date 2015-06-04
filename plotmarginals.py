@@ -289,31 +289,40 @@ def plot_marginals(config):
 
         pp.ylim(np.amin(vk1r), np.amax(vk1r))
         pp.xlim(np.amin(vk2r), np.amax(vk2r))
-        mx, my = np.meshgrid(vk1r, vk2r)
 
-        hist = hists['zero_one'][vki1, vki2]     # res x res x nbins
-        cumsums = np.cumsum(hist, axis=2)
+        sampkey = 'zero_one'
+        samprange = sampling['range']
+        sampres = sampling['resolution']
 
-        percs = 1, 5, 25, 50, 75, 95, 99
-        colors = [matplotlib.cm.spectral(p) for p in percs]
-        sampling = config['args']['samplings']['zero_one']
+        hist = hists[sampkey][vki1, vki2]     # res x res x nbins
+        mx, my, mz = np.meshgrid(
+            vk1r,
+            vk2r,
+            np.linspace(samprange[0], samprange[1], sampres)
+        )
+        ax.scatter(mx, my, mz, s=hist / np.amax(hist) * 10, alpha=0.5)
+        ax.set_zlabel('%s / %s' % (popkey, effectkey))
 
-        for perc, color in zip(percs, colors):
-            bin_idx = np.array([
-                [
-                    np.searchsorted(cumsums[vk1d][vk2d], np.percentile(cumsums, perc))
-                    for vk2d in range(cumsums.shape[1])
-                ]
-                for vk1d in range(cumsums.shape[0])
-            ])
+        # cumsums = np.cumsum(hist, axis=2)
+        # percs = 1, 5, 25, 50, 75, 95, 99
+        # colors = [matplotlib.cm.spectral(p) for p in percs]
+        # sampling = config['args']['samplings'][sampkey]
+        # for perc, color in zip(percs, colors):
+        #    bin_idx = np.array([
+        #        [
+        #            np.searchsorted(cumsums[vk1d][vk2d], np.percentile(cumsums, perc))
+        #            for vk2d in range(cumsums.shape[1])
+        #        ]
+        #        for vk1d in range(cumsums.shape[0])
+        #    ])
+        #
+        #    vals = np.interp(
+        #        bin_idx, [0, sampling['resolution'] - 1], sampling['range']
+        #    )
 
-            vals = np.interp(
-                bin_idx, [0, sampling['resolution'] - 1], sampling['range']
-            )
-
-            ax.plot_wireframe(mx, my, vals, color=color, alpha=0.5, label=perc)
-            ax.set_zlabel('%s / %s' % (popkey, effectkey))
-            ax.legend()
+        #    ax.plot_wireframe(mx, my, vals, color=color, alpha=0.5, label=perc)
+        #    ax.set_zlabel('%s / %s' % (popkey, effectkey))
+        #    ax.legend()
 
     pp.savefig('%s-zero-one.png' % cacheprefix)
 
