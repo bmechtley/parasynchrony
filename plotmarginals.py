@@ -193,7 +193,7 @@ def sum_products(config):
     # Gather statistic arrays in each run's cache file.
     for i, cfn in enumerate(cfns):
         cf = cPickle.load(open(cfn))
-        print '%d / %d: %s' % (i, len(cfn), cfn)
+        print '%d / %d: %s' % (i, len(cfns), cfn)
 
         for popkey in popkeys:
             for effectkey in effectkeys:
