@@ -3,11 +3,11 @@
     "slice_size": 100
   },
   "args": {
-    "resolution": 100,
+    "resolution": 10,
     "samplings": {
-      "zero_one": {"range": [0, 1], "resolution": 1000, "inclmin": true, "p": 0},
-      "one_ten": {"range": [1, 10], "resolution": 1000, "inclmin": true, "p": 0.001},
-      "gt_ten": {"range": [10], "resolution": 1, "inclmin": false, "p": 0.001}
+      "zero_one": {"range": [0, 1], "resolution": 100, "inclmin": true, "p": 0},
+      "one_ten": {"range": [1, 10], "resolution": 100, "inclmin": true, "p": 0.01},
+      "gt_ten": {"range": [10], "resolution": 1, "inclmin": false, "p": 0.01}
     }
   },
   "params": {
