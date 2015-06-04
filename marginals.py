@@ -476,6 +476,9 @@ def generate_runs(config, runtype='qsub'):
         config['file'][k] for k in 'dir', 'name', 'slice_size'
     ]
     config_prefix = os.path.join(config_dir, config_name)
+    ncalcs = functools.reduce(
+        operator.mul, [len(param) for param in config['params'].values()], 1
+    )
 
     if runtype is 'sh':
         script_path = config_prefix + '-runs.sh'
@@ -486,20 +489,25 @@ def generate_runs(config, runtype='qsub'):
             'python marginals.py run %s %d %d\n' % (
                 config_prefix + '.json', start, start + slice_size
             )
-            for start in range(
-                0,
-                functools.reduce(
-                    operator.mul,
-                    [len(param) for param in config['params'].values()],
-                    1
-                ),
-                slice_size
-            )
+            for start in range(0, ncalcs, slice_size)
         ])
         outfile.close()
     elif runtype is 'qsub':
-        # TODO: Make work with qsub.
-        pass
+        job_path = config_prefix + '-runs.pbs'
+
+        outfile = open(job_path, 'w')
+        outfile.writelines([
+            '#PBS -N %s\n' % config['name'],
+            '#PBS -l nodes=20:ppn=1,mem=2000m,walltime=24:00:00\n',
+            '#PBS -M mechtley@ku.edu\n',
+            '#PBS -S /bin/bash\n',
+            '#PBS -d %s\n' % os.getcwd(),
+            '#PBS -e /users/mechtley/logs/%s.err\n' % config['name'],
+            '#PBS -o /users/mechtley/logs/$s.out\n' % config['name'],
+            '#PBS -t 0-%d:%d\n' % (ncalcs, slice_size),
+            'python marginals.py run ${PBS_ARRAYID} (${PBS_ARRAYID}+%d)\n' % slice_size
+        ])
+        outfile.close()
 
 def plot_marginals(config):
     """
@@ -539,7 +547,6 @@ def plot_marginals(config):
         mx, my = np.meshgrid(config['params'][vk1], config['params'][vk2])
 
         hist = hists['zero_one'][vki1, vki2]     # res x res x nbins
-        sums = np.sum(hist, axis=2)     # res x res
         cumsums = np.cumsum(hist, axis=2)
 
         percs = 1, 5, 25, 50, 75, 95, 99
