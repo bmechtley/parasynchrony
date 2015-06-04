@@ -477,7 +477,7 @@ def generate_runs(config, runtype='qsub'):
     ]
     config_prefix = os.path.join(config_dir, config_name)
     ncalcs = functools.reduce(
-        operator.mul, [len(param) for param in config['params'].values()], 1
+        operator.mul, [len(param['range']) for param in config['params'].values()], 1
     )
 
     if runtype is 'sh':
