@@ -112,7 +112,7 @@ def plot_marginals(
                         zdir='y',
                         offset=vk1r[-1] + np.diff(vk1r)[-1] / 10.0,
                         cmap=cmap,
-                        alpha=0.5
+                        a=0.5
                     )
 
                     zmx, zmy = np.meshgrid(vk2r, vk1r)
