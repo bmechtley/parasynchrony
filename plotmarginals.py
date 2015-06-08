@@ -66,14 +66,17 @@ def plot_marginals(
                 hist = np.array(hists[vki1, vki2], dtype=float)
                 histf = hist.flatten()
 
-                zs = np.linspace(float(samprange[0]), float(samprange[1]), sampres)
+                zs = np.linspace(
+                    float(samprange[0]), float(samprange[1]), sampres
+                )
 
                 mx, my, mz = np.meshgrid(vk2r, vk1r, zs)
                 mxf, myf, mzf = [a.flatten() for a in mx, my, mz]
 
                 pzs = np.tile(
                     np.array([
-                        scipy.stats.percentileofscore(histf, score) for score in zs
+                        scipy.stats.percentileofscore(histf, score)
+                        for score in zs
                     ])[np.newaxis, np.newaxis, :],
                     (len(vk2r), len(vk1r), 1)
                 )
@@ -158,12 +161,8 @@ def plot_marginals(
                         )
 
                         ax.plot_trisurf(
-                            zmx.flatten(),
-                            zmy.flatten(),
-                            vals.flatten(),
-                            color=color,
-                            alpha=0.5,
-                            label=perc
+                            zmx.flatten(), zmy.flatten(), vals.flatten(),
+                            color=color, alpha=0.5, label=perc
                         )
 
                     ax.legend()
