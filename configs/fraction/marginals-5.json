@@ -9,7 +9,7 @@
         "range": [0, 1], "resolution": 100, "inclmin": true, "nsamples": 0
       },
       "one_ten": {
-        "range": [1, 10], "resolution": 100, "inclmin": true, "nsamples": 100
+        "range": [1, 10], "resolution": 100, "inclmin": false, "nsamples": 100
       },
       "gt_ten": {
         "range": [10], "resolution": 1, "inclmin": false, "nsamples": 100
@@ -20,11 +20,11 @@
     "r": {"default": 2.0, "range": [1.1, 4]},
     "a": {"default": 1.0},
     "c": {"default": 1.0},
-    "k": {"default": 0.5, "range":[0.1, 0.9]},
-    "mh": {"default": 0.25, "range":[0, 0.5]},
-    "mp": {"default": 0.25, "range":[0, 0.5]},
-    "SpSh": {"default": 1, "range":[0, 2]},
-    "Chh": {"default": 0.5, "range":[0, 1]},
-    "Cpp": {"default": 0.5, "range":[0, 1]}
+    "k": {"default": 0.5, "range": [0.1, 0.9]},
+    "mh": {"default": 0.25, "range": [0, 0.5]},
+    "mp": {"default": 0.25, "range": [0, 0.5]},
+    "SpSh": {"default": 1, "range": [0, 2]},
+    "Chh": {"default": 0.5, "range": [0, 1]},
+    "Cpp": {"default": 0.5, "range": [0, 1]}
   }
 }
