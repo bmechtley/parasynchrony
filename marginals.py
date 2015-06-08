@@ -6,12 +6,12 @@ Reuman Lab, Kansas Biological Survey
 
 Usage: python marginals.py command configname.json [start] [stop]
 
-    command={genruns, run, plot}
+    command={genruns, run, gather}
         genruns: generate a qsub script for all runs. The "slice size" (how many
             computations to perform per run) is defined in the config file.
         run: run the given configuration for a single slice, starting with an
             offset computation # start and ending with stop - 1.
-        plot: plot the saved results.
+        gather: combine histograms from multiple runs.
 
     configname.json: configuration file describing model parameters and ranges,
         computation resolution, number of processes used, and plotting
@@ -19,9 +19,7 @@ Usage: python marginals.py command configname.json [start] [stop]
 
 Produces intermediate cached pickle files in the same path as the config
 file, defaulting to cache/. See files in configs/fraction for some examples.
-Leaving certain parameters out resorts to their defaults. Read
-configs/fraction/schema.json for info on how these JSON files should be
-formatted.
+Leaving certain parameters out resorts to their defaults.
 
 TODO: Time permitting, it would probably be best to use a single HDF5 file
     rather than summing up a bunch of incremental cached files.
@@ -469,7 +467,7 @@ def main():
     elif sys.argv[1] == 'gather' and len(sys.argv) == 3:
         gather_runs(config)
     else:
-        print 'usage: python marginals.py {genruns, runs, plot}', \
+        print 'usage: python marginals.py {genruns, runs, gather}', \
             'config.json [start] [stop]'
 
 if __name__ == '__main__':
