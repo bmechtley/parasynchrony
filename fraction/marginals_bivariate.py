@@ -56,6 +56,7 @@ model = models.parasitism.get_model('nbd(2)')
 model.lambdify_ss = False
 printer = pprint.PrettyPrinter()
 
+
 def tabs(n):
     """
     Return a string containing n tabs. Helper for debug output Laaaaazy.
@@ -66,6 +67,7 @@ def tabs(n):
 
     return '\t' * n
 
+
 def since(btime):
     """
     Return time since the input time.
@@ -74,6 +76,7 @@ def since(btime):
     :return: (float) time since input time in milliseconds
     """
     return time.clock() - btime
+
 
 def noise_cov(ndict):
     """
@@ -92,6 +95,7 @@ def noise_cov(ndict):
         [0, 0, ndict['SpSh'], ndict['SpSh'] * ndict['Cpp']],
         [0, 0, ndict['SpSh'] * ndict['Cpp'], ndict['SpSh']]
     ])
+
 
 def compute_metrics(params):
     """
@@ -130,6 +134,7 @@ def compute_metrics(params):
         metrics[effects] = dict(Rhh=cfrac[0, 1], Rpp=cfrac[2, 3])
 
     return metrics
+
 
 def compute_marginal(opts):
     """
@@ -246,6 +251,7 @@ def compute_marginal(opts):
 
     return hist
 
+
 def make_products(config, cacheprefix=''):
     """
     Compute 2D marginal histograms for fraction of synchrony values for
@@ -340,6 +346,7 @@ def make_products(config, cacheprefix=''):
 
     return products
 
+
 def plot_marginals(products, plotpath):
     """
     For each model parameter, plot 2D marginal histograms with parameter values
@@ -395,6 +402,7 @@ def plot_marginals(products, plotpath):
     pp.subplots_adjust(top=0.975, bottom=0.025)
     pp.savefig(plotpath)
     print tabs(4), 'Saved %s (%.3fs).' % (plotpath, since(tic))
+
 
 def main():
     """Where the action is."""

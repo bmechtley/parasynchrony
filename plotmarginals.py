@@ -19,12 +19,73 @@ import matplotlib.cm
 
 import utilities
 
-def plot_marginals(
-    config,
-    show_marginals=True,
-    show_bins=False,
-    percentiles=(5, 50, 95)
+
+def plot_marginal(
+        dim1, dim2, dimsum, hist,
+        ax=None, axis=0, zdir='x', cmap='cubehelix'
 ):
+    if ax is None:
+        ax = pp.gca()
+
+    mdim1, mdim2 = np.meshgrid(dim1, dim2)
+    mdimsum = np.sum(hist, axis=axis).T / np.amax(hist)
+
+    offset_idx = int(zdir is 'y') - 1
+
+    ax.contourf(
+        mdim1, mdim2, mdimsum,
+        zdir=zdir,
+        offset=dimsum[offset_idx] - np.diff(dimsum)[offset_idx] / 10,
+        cmap=cmap,
+        alpha=0.5
+    )
+
+
+def plot_marginals(xs, ys, zs, hist, ax, cmap='cubehelix'):
+    plot_marginal(ys, zs, xs, hist, ax, 0, 'x', cmap)
+    plot_marginal(xs, zs, ys, hist, ax, 1, 'y', cmap)
+    plot_marginal(xs, ys, zs, hist, ax, 2, 'z', cmap)
+
+
+def plot_percentiles(
+    vk1r, vk2r, percentiles, hist, samprange, sampres, ax=None, cmap='cubehelix'
+):
+    if type(cmap) is str:
+        cmap = matplotlib.cm.get_cmap(cmap)
+
+    if ax is None:
+        ax = pp.gca()
+
+    hnonan = np.where(np.isfinite(hist), hist, np.zeros_like(hist))
+    hcumsum = np.cumsum(hnonan, axis=2)
+    htotals = np.nanmax(hcumsum, axis=2)[:, :, np.newaxis]
+    hvalid_totals = np.bitwise_and(np.isfinite(htotals), htotals != 0)
+    hcumsum /= np.where(hvalid_totals, htotals, np.full_like(htotals, np.inf))
+
+    percentiles = np.array(percentiles) / 100
+    colors = cmap(percentiles)
+    zmx, zmy = np.meshgrid(vk2r, vk1r)
+
+    for perc, color in zip(percentiles, colors):
+        vals = np.interp(
+            np.array([
+                [
+                    np.searchsorted(hcumsum[vk1d, vk2d], perc)
+                    for vk2d in range(hcumsum.shape[1])
+                ]
+                for vk1d in range(hcumsum.shape[0])
+            ]),
+            [0, sampres - 1],
+            samprange
+        )
+
+        ax.plot_trisurf(
+            zmx.flatten(), zmy.flatten(), vals.flatten(),
+            color=color, alpha=0.5, label=perc
+        )
+
+
+def make_plots(cached, show_marginals=True, percentiles=(5, 50, 95)):
     """
     TODO: This.
 
@@ -33,21 +94,21 @@ def plot_marginals(
 
     print 'Plotting marginals.'
 
-    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
-    gathered = cPickle.load(open('%s-full.pickle' % cacheprefix))
-
+    config = cached['config']
     popkey, effectkey = 'h', 'Rhh'
 
     varkeys, paramkeys = [config['props'][k] for k in 'varkeys', 'paramkeys']
     fig = pp.figure(figsize=(len(varkeys) * 15, len(varkeys) * 10))
 
     for sampkey in config['args']['samplings']:
+        print '\t', sampkey
+
         for spi, ((vki1, vk1), (vki2, vk2)) in enumerate(
             itertools.combinations_with_replacement(enumerate(varkeys), 2)
         ):
-            print '\t', sampkey
+            print '\t\t', vk1, vk2,
 
-            hists = gathered['counts'][sampkey][popkey][effectkey]
+            hists = cached['counts'][sampkey][popkey][effectkey]
 
             ax = fig.add_subplot(
                 len(varkeys),
@@ -66,28 +127,11 @@ def plot_marginals(
                 hist = np.array(hists[vki1, vki2], dtype=float)
                 histf = hist.flatten()
 
-                zs = np.linspace(
-                    float(samprange[0]), float(samprange[1]), sampres
-                )
-
+                zs = np.linspace(*(samprange + [sampres]))
                 mx, my, mz = np.meshgrid(vk2r, vk1r, zs)
-                mxf, myf, mzf = [a.flatten() for a in mx, my, mz]
-
-                pzs = np.tile(
-                    np.array([
-                        scipy.stats.percentileofscore(histf, score)
-                        for score in zs
-                    ])[np.newaxis, np.newaxis, :],
-                    (len(vk2r), len(vk1r), 1)
-                )
-                pzsf = pzs.flatten()
-
-                mxf, myf, mzf, pzsf, histf = [
-                    a[histf != 0] for a in mxf, myf, mzf, pzsf, histf
-                ]
+                mzf = mz.flatten()[histf != 0]
 
                 cmap = matplotlib.cm.get_cmap('jet')
-                maxcount = float(np.amax(hist))
 
                 ax.set_xlim(np.amin(vk2r), np.amax(vk2r))
                 ax.set_ylim(np.amin(vk1r), np.amax(vk1r))
@@ -97,82 +141,33 @@ def plot_marginals(
                 ax.set_zlabel('%s / %s' % (popkey, effectkey))
 
                 if show_marginals:
-                    print '\t\tmarginals'
-                    xmy, xmz = np.meshgrid(vk1r, zs)
-                    xmx = np.sum(hist, axis=0).T / np.amax(hist)
-                    ax.contourf(
-                        xmx, xmy, xmz,
-                        zdir='x',
-                        offset=vk2r[0] - np.diff(vk2r)[0] / 10.0,
-                        cmap=cmap,
-                        alpha=0.5
-                    )
-
-                    ymx, ymz = np.meshgrid(vk2r, zs)
-                    ymy = np.sum(hist, axis=1).T / np.amax(hist)
-                    ax.contourf(
-                        ymx, ymy, ymz,
-                        zdir='y',
-                        offset=vk1r[-1] + np.diff(vk1r)[-1] / 10.0,
-                        cmap=cmap,
-                        a=0.5
-                    )
-
-                    zmx, zmy = np.meshgrid(vk2r, vk1r)
-                    zmz = np.sum(hist, axis=2) / np.amax(hist)
-                    ax.contourf(
-                        zmx, zmy, zmz,
-                        zdir='z',
-                        offset=zs[0] - np.diff(zs)[0] / 10.0,
-                        cmap=cmap,
-                        alpha=0.5
-                    )
-
-                if show_bins:
-                    print '\t\tbins'
-                    ax.scatter(
-                        mxf, myf, mzf,
-                        s=np.log10(1 + histf / maxcount) * 1000,
-                        c=cmap(pzsf / np.amax(pzsf)),
-                        lw=0,
-                        alpha=1.0
-                    )
-
-                cumsums = np.cumsum(hist, axis=2)
-                cumsums /= np.amax(cumsums, axis=2)[:, :, np.newaxis]
+                    print 'marginals',
+                    plot_marginals(vk2r, vk1r, zs, hist, ax, cmap)
 
                 if percentiles is not None and len(percentiles):
-                    print '\t\tpercentiles'
+                    print 'percentiles',
+                    plot_percentiles(
+                        vk1r,
+                        vk2r,
+                        percentiles,
+                        hist,
+                        samprange,
+                        sampres,
+                        ax,
+                        cmap
+                    )
 
-                    percentiles = np.array(percentiles) / 100
-                    colors = cmap(percentiles)
+            print
 
-                    for perc, color in zip(percentiles, colors):
-                        vals = np.interp(
-                            np.array([
-                                [
-                                    np.searchsorted(cumsums[vk1d, vk2d], perc)
-                                    for vk2d in range(cumsums.shape[1])
-                                ]
-                                for vk1d in range(cumsums.shape[0])
-                            ]),
-                            [0, sampling['resolution'] - 1],
-                            sampling['range']
-                        )
+        fn = 'plots/%s-%s.png' % (config['file']['name'], sampkey)
+        print '\t\tWriting', fn
+        pp.savefig(fn)
 
-                        ax.plot_trisurf(
-                            zmx.flatten(), zmy.flatten(), vals.flatten(),
-                            color=color, alpha=0.5, label=perc
-                        )
-
-                    ax.legend()
-
-            pp.savefig('%s-%s.png' % (cacheprefix, sampkey))
 
 def main():
     """Main."""
 
-    plot_marginals(utilities.config_defaults(sys.argv[1]))
+    make_plots(cPickle.load(open(sys.argv[1])))
 
 if __name__ == '__main__':
     main()
