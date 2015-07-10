@@ -45,12 +45,14 @@ model = models.parasitism.get_model('nbd(2)')
 model.lambdify_ss = False
 printer = pprint.PrettyPrinter()
 
+
 def ncalcs(config):
     return functools.reduce(
         operator.mul,
         [len(param['range']) for param in config['params'].values()],
         1
     )
+
 
 def noise_cov(ndict):
     """
@@ -69,6 +71,7 @@ def noise_cov(ndict):
         [0, 0, ndict['SpSh'], ndict['SpSh'] * ndict['Cpp']],
         [0, 0, ndict['SpSh'] * ndict['Cpp'], ndict['SpSh']]
     ])
+
 
 def compute_metrics(params):
     """
@@ -107,6 +110,7 @@ def compute_metrics(params):
         metrics[effects] = dict(Rhh=cfrac[0, 1], Rpp=cfrac[2, 3])
 
     return metrics
+
 
 def zero_storage_arrays(config):
     """
@@ -189,6 +193,7 @@ def zero_storage_arrays(config):
         samplesleft=samplesleft
     )
 
+
 def param_product(config):
     """
     Return an iterator for a product of all parameter values given a config
@@ -203,6 +208,7 @@ def param_product(config):
         range(config['args']['resolution']),
         repeat=len(config['props']['varkeys'])
     )
+
 
 def run_slice(config, start, stop):
     """
@@ -331,6 +337,7 @@ def run_slice(config, start, stop):
 
     print time.clock() - bt
 
+
 def generate_runs(config, runtype='qsub'):
     """
     Generate a qsub file that runs a bunch of slices. Saves a shell script in
@@ -386,6 +393,7 @@ def generate_runs(config, runtype='qsub'):
         ])
 
         outfile.close()
+
 
 def gather_runs(config):
     """
@@ -453,6 +461,7 @@ def gather_runs(config):
         dict(counts=counts, maxima=maxima, samples=samples),
         open(cachepath, 'w')
     )
+
 
 def main():
     """Main."""
