@@ -352,7 +352,7 @@ def generate_runs(config, runtype='qsub'):
     the parent directory of the configuration file.
 
     :param config: (dict) configuration dict opened with config_defaults.
-    :param type: (str) 'qsub' for a qsub configuration file or 'sh' for a simple
+    :param runtype: (str) 'qsub' for a qsub configuration file or 'sh' for a simple
         shell script that launches a bunch of processes.
     """
 
@@ -484,8 +484,8 @@ def main():
     if sys.argv[1] == 'run' and len(sys.argv) == 5:
         start, stop = sys.argv[3:]
         run_slice(config, int(start), int(stop))
-    elif sys.argv[1] == 'genruns' and len(sys.argv) == 3:
-        generate_runs(config, runtype='qsub')
+    elif sys.argv[1] == 'genruns' and len(sys.argv) >= 3:
+        generate_runs(config, sys.argv[3])
     elif sys.argv[1] == 'gather' and len(sys.argv) == 3:
         gather_runs(config)
     else:
