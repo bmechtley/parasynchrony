@@ -481,11 +481,17 @@ def main():
 
     config = utilities.config_defaults(sys.argv[2])
 
+
     if sys.argv[1] == 'run' and len(sys.argv) == 5:
         start, stop = sys.argv[3:]
         run_slice(config, int(start), int(stop))
     elif sys.argv[1] == 'genruns' and len(sys.argv) >= 3:
-        generate_runs(config, sys.argv[3])
+        if len(sys.argv) > 3:
+            runtype = sys.argv[3]
+        else:
+            runtype = 'qsub'
+
+        generate_runs(config, runtype=runtype)
     elif sys.argv[1] == 'gather' and len(sys.argv) == 3:
         gather_runs(config)
     else:
