@@ -23,8 +23,12 @@ class StochasticModel:
         :param symvars: list of SymPy symbols representing state variables.
         :param noises: list of SymPy symbols representing noise variables.
         :param equation: SymPy Matrix describing dynamics of the state
-            variables. X_t+1 = F(X_t)
+            variables. X_{t+1} = F(X_t)
+        :param allvars:
+        :param cachesize:
         """
+
+        # TODO: Describe allvars, cachesize.
 
         self.allvars = allvars
         self.vars = sympy.Matrix(symvars)
