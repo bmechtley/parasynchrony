@@ -47,6 +47,12 @@ printer = pprint.PrettyPrinter()
 
 
 def ncalcs(config):
+    """
+    Computes the number of data points needed to compute a specified config file.
+
+    :param config: JSON configuration file.
+    """
+
     return functools.reduce(
         operator.mul,
         [len(param['range']) for param in config['params'].values()],
@@ -304,6 +310,8 @@ def run_slice(config, start, stop):
 
                 # Record the maximum value and its respective parameters for
                 # each marginal.
+                # TODO: Are the number of dimensions equal to the number of varkeys
+                # TODO:     or the total number of parameters?
                 if metric > ind_maxima[vkis + vkargis + (-1,)]:
                     ind_maxima[vkis + vkargis] = [
                         paramset[pk] for pk in paramkeys
@@ -352,6 +360,7 @@ def generate_runs(config, runtype='qsub'):
         config['file'][k] for k in 'dir', 'name', 'slice_size'
     ]
     config_prefix = os.path.join(config_dir, config_name)
+    log_dir = os.path.join(config_dir, 'logs')
 
     nc = ncalcs(config)
 
@@ -370,6 +379,7 @@ def generate_runs(config, runtype='qsub'):
     elif runtype is 'qsub':
         job_path = config_prefix + '-runs.sh'
 
+        # TODO: Test:  Dynamic log file path.
         outfile = open(job_path, 'w')
         outfile.writelines([
             '#PBS -N %s\n' % config['file']['name'],
@@ -377,8 +387,8 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -m n\n',
             '#PBS -S /bin/bash\n',
             '#PBS -d %s\n' % os.getcwd(),
-            '#PBS -e /users/mechtley/logs/%s.err\n' % config['file']['name'],
-            '#PBS -o /users/mechtley/logs/%s.out\n' % config['file']['name'],
+            '#PBS -e %s.err\n' % os.path.join(log_dir, config['file']['name']),
+            '#PBS -o %s.out\n' % os.path.join(log_dir, config['file']['name']),
             '#PBS -t 0-%d\n' % ((nc + 1) / slice_size),
             ' '.join([
                 'python -W ignore marginals.py run',
@@ -457,6 +467,9 @@ def gather_runs(config):
 
     cachepath = '%s-full.pickle' % cacheprefix
 
+    # TODO: It might be good to save the ordered varkeys etc. for easy cross-reference
+    # TODO:     with maxima / samples. User of this file shouldn't have to import
+    # TODO:     models.Parasitism, which could change.
     cPickle.dump(
         dict(counts=counts, maxima=maxima, samples=samples),
         open(cachepath, 'w')
