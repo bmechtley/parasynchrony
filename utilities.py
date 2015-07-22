@@ -140,6 +140,7 @@ def decode_dict(data):
 
     return rv
 
+
 def zero_storage_arrays(config):
     """
 
@@ -215,6 +216,7 @@ def zero_storage_arrays(config):
         samplesleft=samplesleft
     )
 
+
 def load_config(configfile):
     config_json = json.load(
         open(configfile, 'r'),
@@ -222,6 +224,26 @@ def load_config(configfile):
     )
 
     return pybatchdict.BatchDict(config_json)
+
+
+def noise_cov(ndict):
+    """
+    Noise covariance from parameterization dictionary.
+
+    :param ndict: (dict) dictionary of noise parameters including:
+        SpSh: Ratio of parasitoid variance to host variance (Sp / Sh).
+        Chh: Correlation between hosts.
+        Cpp: Correlation between parasitoids.
+    :return: (np.ndarray) 4x4 covariance matrix.
+    """
+
+    return np.array([
+        [1, ndict['Chh'], 0, 0],
+        [ndict['Chh'], 1, 0, 0],
+        [0, 0, ndict['SpSh'], ndict['SpSh'] * ndict['Cpp']],
+        [0, 0, ndict['SpSh'] * ndict['Cpp'], ndict['SpSh']]
+    ])
+
 
 def config_defaults(configpath=None):
     """
@@ -305,6 +327,7 @@ def config_defaults(configpath=None):
     ]
 
     return config
+
 
 def norm_shape(shape):
     """
