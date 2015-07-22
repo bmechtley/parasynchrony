@@ -53,12 +53,7 @@ def fraction_synchrony(params):
                 models.parasitism.sym_params({
                     k: v for k, v in p.iteritems()
                     if k not in ['Sp', 'Chh', 'Cpp']
-                }), p['Sh'] * np.array([
-                    [1, p['Chh'], 0, 0],
-                    [p['Chh'], 1, 0, 0],
-                    [0, 0, p['Sp'], p['Sp'] * p['Cpp']],
-                    [0, 0, p['Sp'] * p['Cpp'], p['Sp']]
-                ])
+                }), utilities.noise_cov(p)
             )
         )
         for term, p in params.iteritems()
@@ -90,7 +85,7 @@ def process_products(opts):
     params, cacheprefix, k1, k2 = opts
     cachepath = '%s-%s-part.pickle' % (cacheprefix, utilities.paramhash(opts))
 
-    varyingkeys = [k for k in params if params[k]['res'] > 1]
+    varyingkeys = [k for k in params if len(params[k]['range']) > 1]
     defaults = {k: v['default'] for k, v in params.iteritems()}
     r1, r2 = [params[k]['range'] for k in [k1, k2]]
 
@@ -157,7 +152,7 @@ def make_products(
         fraction_synchrony for more info.
     """
 
-    varyingkeys = [k for k in params if params[k]['res'] > 1]
+    varyingkeys = [k for k in params if len(params[k]['range']) > 1]
     keyproduct = list(combinations_with_replacement(varyingkeys, 2))
 
     # Returns an array of dictionaries, each containing a two-dimensional array
@@ -179,7 +174,7 @@ def make_products(
             os.remove(d)
     else:
         print 'Loading %s.' % cachepath
-        products = cPickle.load(open(cachepath, 'r'))
+        products = cPickle.load(open(cachepath))
 
     # Restructure so we have a dictionary with fraction_synchrony metrics as
     # keys and lists of two-dimensional arrays of their values across the
@@ -220,7 +215,7 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
 
     # Get fraction of host synchrony from host effects for all combinations
     # parameters that vary over more than one value (res > 1).
-    vkeys = [k for k in params.iterkeys() if params[k]['res'] > 1]
+    vkeys = [k for k in params.iterkeys() if len(params[k]['range']) > 1]
     n = len(vkeys)
 
     # Get minimum and maximum values.
@@ -340,20 +335,21 @@ def main():
     configpath = sys.argv[1]
     configdir, configfile = os.path.split(configpath)
     configname = os.path.splitext(configfile)[0]
-    config = json.load(open(configpath, 'r'))
+    config = json.load(open(configpath))
 
     args, params = config['args'], config['params']
 
     for p in params.itervalues():
-        p.setdefault('res', args['resolution'])
-        p.setdefault('range', (p['default'], p['default']))
-        p['range'] = np.linspace(
-            p['range'][0], p['range'][1], args['resolution']
-        )
+        if 'range' in p:
+            p['range'] = np.linspace(
+                p['range'][0], p['range'][1], args['resolution']
+            )
+        elif 'default' in p:
+            p['range'] = [p['default']]
 
     products = make_products(
         params=params,
-        processes=args['processes'],
+        processes=args.get('processes', multiprocessing.cpu_count() - 1),
         cacheprefix=os.path.join(configdir, configname)
     )
 
