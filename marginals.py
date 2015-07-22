@@ -60,25 +60,6 @@ def ncalcs(config):
     )
 
 
-def noise_cov(ndict):
-    """
-    Noise covariance from parameterization dictionary.
-
-    :param ndict: (dict) dictionary of noise parameters including:
-        SpSh: Ratio of parasitoid variance to host variance (Sp / Sh).
-        Chh: Correlation between hosts.
-        Cpp: Correlation between parasitoids.
-    :return: (np.ndarray) 4x4 covariance matrix.
-    """
-
-    return np.array([
-        [1, ndict['Chh'], 0, 0],
-        [ndict['Chh'], 1, 0, 0],
-        [0, 0, ndict['SpSh'], ndict['SpSh'] * ndict['Cpp']],
-        [0, 0, ndict['SpSh'] * ndict['Cpp'], ndict['SpSh']]
-    ])
-
-
 def compute_metrics(params):
     """
     Compute the fracsync between patches as different metrics. Fracsync is
@@ -107,7 +88,7 @@ def compute_metrics(params):
 
         cnum, cden = tuple([
             models.utilities.correlation(model.calculate_covariance(
-                models.parasitism.sym_params(p), noise_cov(n)
+                models.parasitism.sym_params(p), utilities.noise_cov(n)
             ))
             for p, n in [(pnum, nnum), (pden, nden)]
         ])
@@ -196,7 +177,11 @@ def zero_storage_arrays(config):
         counts=counts,
         maxima=maxima,
         samples=samples,
-        samplesleft=samplesleft
+        samplesleft=samplesleft,
+        paramkeys=paramkeys,
+        varkeys=varkeys,
+        popkeys=popkeys,
+        effectkeys=effectkeys
     )
 
 
@@ -232,26 +217,27 @@ def run_slice(config, start, stop):
 
     bt = time.clock()
 
-    params = config['params']
-    paramkeys = config['props']['paramkeys']
-
-    # Parameters that actually vary, their count, and their index within the
-    # ordered parameter list.
-    varkeys = config['props']['varkeys']
-    varkeyindices = {k: i for i, k in enumerate(varkeys)}
-
     # All possible combinations of varying parameters. Values are the index of
     # the value for the particular parameter. It's an iterator, so we can freely
     # slice it without having to actually store the thing in memory.
+    params = config['params']
+    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
+
     pcombos = param_product(config)
     runslice = itertools.islice(pcombos, start, stop)
 
     storage_arrays = zero_storage_arrays(config)
-    counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
-        'counts', 'maxima', 'samples', 'samplesleft'
-    )]
-    res, samplings = [config['args'][k] for k in 'resolution', 'samplings']
-    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
+
+    varkeys = storage_arrays['varkeys']
+    paramkeys = storage_arrays['paramkeys']
+    counts = storage_arrays['counts']
+    popkeys = storage_arrays['popkeys']
+    effectkeys = storage_arrays['effectkeys']
+    maxima = storage_arrays['maxima']
+    samples = storage_arrays['samples']
+    samplesleft = storage_arrays['samplesleft']
+
+    varkeyindices = {k: i for i, k in enumerate(varkeys)}
 
     for indices in runslice:
         # Make a single parameter set for this computation, setting each param
@@ -304,14 +290,17 @@ def run_slice(config, start, stop):
 
             # Store statistics for each marginal parameter combination.
             for vkeys in itertools.product(varkeys, repeat=2):
-                # indices of varkeys used for marginals.
+                # Indices of the TWO varkeys used for marginals.
                 vkis = tuple([varkeyindices[vk] for vk in vkeys])
+
+                # Indices of the ARGUMENTS used for the two parameters used in
+                # marginals.
                 vkargis = tuple([indices[vki] for vki in vkis])
 
                 # Record the maximum value and its respective parameters for
                 # each marginal.
-                # TODO: Are the number of dimensions equal to the number of varkeys
-                # TODO:     or the total number of parameters?
+                # TODO: Are the number of dimensions equal to the number of
+                # TODO:     varkeys or the total number of parameters?
                 if metric > ind_maxima[vkis + vkargis + (-1,)]:
                     ind_maxima[vkis + vkargis] = [
                         paramset[pk] for pk in paramkeys
@@ -327,7 +316,12 @@ def run_slice(config, start, stop):
                 counts=counts[sampkey],
                 maxima=maxima[sampkey],
                 samples=samples[sampkey],
-                samplesleft=samplesleft[sampkey]
+                samplesleft=samplesleft[sampkey],
+                paramkeys=paramkeys,
+                varkeys=varkeys,
+                popkeys=popkeys,
+                effectkeys=effectkeys,
+                varkeyindices=varkeyindices
             ),
             open(
                 '%s-%s-%d-%d.pickle' % (
@@ -361,13 +355,12 @@ def generate_runs(config, runtype='qsub'):
     ]
     config_prefix = os.path.join(config_dir, config_name)
     log_dir = os.path.join(config_dir, 'logs')
-
+    script_path = config_prefix + '-runs.sh'
     nc = ncalcs(config)
 
-    if runtype is 'sh':
-        script_path = config_prefix + '-runs.sh'
-        print 'Writing %s.' % script_path
+    print 'Writing %s.' % script_path
 
+    if runtype is 'sh':
         outfile = open(script_path, 'w')
         outfile.writelines(['set -e\n'] + [
             'python marginals.py run %s %d %d\n' % (
@@ -377,10 +370,8 @@ def generate_runs(config, runtype='qsub'):
         ])
         outfile.close()
     elif runtype is 'qsub':
-        job_path = config_prefix + '-runs.sh'
-
         # TODO: Test:  Dynamic log file path.
-        outfile = open(job_path, 'w')
+        outfile = open(script_path, 'w')
         outfile.writelines([
             '#PBS -N %s\n' % config['file']['name'],
             '#PBS -l nodes=1,mem=1000m,walltime=1:00:00\n',
@@ -429,6 +420,7 @@ def gather_runs(config):
             cf = cPickle.load(open(cfn))
             print '\t%d / %d: %s' % (i, len(cfns), cfn)
 
+            popkeys = cf
             for popkey in popkeys:
                 for effectkey in effectkeys:
                     # Shorthand for global arrays over all cached values.
@@ -467,9 +459,9 @@ def gather_runs(config):
 
     cachepath = '%s-full.pickle' % cacheprefix
 
-    # TODO: It might be good to save the ordered varkeys etc. for easy cross-reference
-    # TODO:     with maxima / samples. User of this file shouldn't have to import
-    # TODO:     models.Parasitism, which could change.
+    # TODO: It might be good to save the ordered varkeys etc. for easy cross-
+    # TODO:     reference with maxima / samples. User of this file shouldn't
+    # TODO:     have to import models.Parasitism, which could change.
     cPickle.dump(
         dict(counts=counts, maxima=maxima, samples=samples),
         open(cachepath, 'w')
@@ -480,7 +472,6 @@ def main():
     """Main."""
 
     config = utilities.config_defaults(sys.argv[2])
-
 
     if sys.argv[1] == 'run' and len(sys.argv) == 5:
         start, stop = sys.argv[3:]
