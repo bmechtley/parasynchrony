@@ -159,7 +159,7 @@ def make_products(
     # with the different metrics returned by fraction_synchrony across the
     # combination of each pair of varying parameters.
     cachepath = '%s-products.pickle' % cacheprefix
-    if not os.path.exists(cachepath):
+    if not s.path.exists(cachepath):
         print 'Computing with %d processes.' % processes
         btime = time.clock()
         products = utilities.multipool(
@@ -332,6 +332,8 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
 
 
 def main():
+    """Where the action is."""
+
     configpath = sys.argv[1]
     configdir, configfile = os.path.split(configpath)
     configname = os.path.splitext(configfile)[0]
@@ -349,7 +351,9 @@ def main():
 
     products = make_products(
         params=params,
-        processes=args.get('processes', multiprocessing.cpu_count() - 1),
+        processes=max(
+            1, args.get('processes', multiprocessing.cpu_count() - 1)
+        ),
         cacheprefix=os.path.join(configdir, configname)
     )
 
