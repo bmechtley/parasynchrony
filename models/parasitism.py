@@ -15,7 +15,14 @@ import sys
 import sympy
 import stochastic
 
+
 def make_globals():
+    """
+
+
+    :return:
+    """
+
     return dict(
         a=sympy.Symbol('a', positive=True),
         r=sympy.Symbol('\lambda', positive=True),
@@ -64,8 +71,16 @@ def make_globals():
 
 symbols, labels = make_globals()
 
+
 def sym_params(params):
+    """
+
+    :param params:
+    :return:
+    """
+
     return {symbols[k]: v for k, v in params.iteritems()}
+
 
 def ar1():
     """
@@ -77,6 +92,7 @@ def ar1():
     a, x, e = [symbols[v] for v in ['alpha', 'x', 'e']]
     return stochastic.StochasticModel([x], [e], [a * x + e], (a, e))
 
+
 def nb():
     """
     Single-patch Nicholson-Bailey model with no regularization. Note: this
@@ -85,6 +101,7 @@ def nb():
         P_t = c H_{t-1} (1 - exp(-a P_{t-1})) exp(e_P)
     :return: StochasticModel for Nicholson-Bailey process.
     """
+
     h, p, eh, ep, r, a, c = [
         symbols[v] for v in ['h', 'p', 'eh', 'ep', 'r', 'a', 'c']
     ]
@@ -98,6 +115,7 @@ def nb():
         ],
         (r, a, c)
     )
+
 
 def nbd():
     """
@@ -122,6 +140,7 @@ def nbd():
         ],
         (r, a, c, k)
     )
+
 
 def get_model(modelstr):
     """
