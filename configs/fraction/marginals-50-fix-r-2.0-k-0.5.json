@@ -1,6 +1,8 @@
 {
   "file": {
-    "slice_size": 35000
+    "slice_size": 35000,
+    "walltime": "10:00:00",
+    "gather_size": 350000
   },
   "args": {
     "resolution": 50,
