@@ -310,32 +310,29 @@ def run_slice(config, start, stop):
                 if np.isfinite(binindex):
                     ind_counts[vkis + vkargis + (binindex,)] += 1
 
-    for sampkey in samplings:
-        cPickle.dump(
-            dict(
-                counts=counts[sampkey],
-                maxima=maxima[sampkey],
-                samples=samples[sampkey],
-                samplesleft=samplesleft[sampkey],
-                paramkeys=paramkeys,
-                varkeys=varkeys,
-                popkeys=popkeys,
-                effectkeys=effectkeys,
-                varkeyindices=varkeyindices
-            ),
-            open(
-                '%s-%s-%d-%d.pickle' % (
-                    os.path.join(
-                        config['file']['dir'],
-                        config['file']['name']
-                    ),
-                    sampkey,
-                    start,
-                    stop
-                ),
-                'w'
-            )
-        )
+    fnkeys = (
+        os.path.join(config['file']['dir'], config['file']['name']),
+        start,
+        stop
+    )
+
+    cPickle.dump(
+        dict(
+            counts=counts,
+            maxima=maxima,
+            samples=samples,
+            samplesleft=samplesleft,
+            sampkeys=samplings.keys(),
+            paramkeys=paramkeys,
+            varkeys=varkeys,
+            popkeys=popkeys,
+            effectkeys=effectkeys,
+            varkeyindices=varkeyindices
+        ),
+        open('%s-%d-%d.pickle' % fnkeys, 'w')
+    )
+
+    open('%s-%d-%d-complete.txt' % fnkeys, 'a').close()
 
     print time.clock() - bt
 
@@ -405,7 +402,6 @@ def gather_runs(config):
 
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
 
-    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
     samplings = config['args']['samplings']
     storage_arrays = utilities.zero_storage_arrays(config)
     counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
@@ -413,21 +409,29 @@ def gather_runs(config):
     )]
 
     # Gather statistic arrays in each run's cache file.
-    for sampkey, sampling in samplings.iteritems():
-        cfns = glob.glob(cacheprefix + '-%s-*-*.pickle' % sampkey)
+    cfns = glob.glob(cacheprefix + '*.pickle')
 
-        for i, cfn in enumerate(cfns):
-            completion_fn = os.path.splitext(cfn)[0] + '-complete.txt'
+    varkeys, paramkeys, sampkeys = [], [], []
+    varkeyindices = dict()
 
-            if not os.path.isfile(completion_fn):
-                continue
+    for i, cfn in enumerate(cfns):
+        completion_fn = os.path.splitext(cfn)[0] + '-complete.txt'
 
-            print 'Gathering %s.' % cfn
+        if not os.path.isfile(completion_fn):
+            continue
 
-            cf = cPickle.load(open(cfn))
-            print '\t%d / %d: %s' % (i, len(cfns), cfn)
+        cf = cPickle.load(open(cfn))
+        print '\t%d / %d: %s' % (i, len(cfns), cfn)
 
-            popkeys = cf
+        # Set these every time even though we only need to do so once.
+        popkeys = cf['popkeys']
+        effectkeys = cf['effectkeys']
+        varkeys = cf['varkeys']
+        varkeyindices = cf['varkeyindices']
+        paramkeys = cf['paramkeys']
+        sampkeys = cf['sampkeys']
+
+        for sampkey in sampkeys:
             for popkey in popkeys:
                 for effectkey in effectkeys:
                     # Shorthand for global arrays over all cached values.
@@ -464,8 +468,8 @@ def gather_runs(config):
                         argmaxima, gmaxima, cmaxima
                     )
 
-            os.remove(cfn)
-            os.remove(completion_fn)
+        os.remove(cfn)
+        os.remove(completion_fn)
 
     fullnum = 0
     fulls = glob.glob(cacheprefix + '-full-*.pickle')
@@ -477,11 +481,19 @@ def gather_runs(config):
 
     cachepath = '%s-full-%d.pickle' % (cacheprefix, fullnum)
 
-    # TODO: It might be good to save the ordered varkeys etc. for easy cross-
-    # TODO:     reference with maxima / samples. User of this file shouldn't
-    # TODO:     have to import models.Parasitism, which could change.
     cPickle.dump(
-        dict(counts=counts, maxima=maxima, samples=samples),
+        dict(
+            counts=counts,
+            maxima=maxima,
+            samples=samples,
+            samplesleft=samplesleft,
+            varkeys=varkeys,
+            sampkeys=sampkeys,
+            paramkeys=paramkeys,
+            popkeys=popkeys,
+            varkeyindices=varkeyindices,
+            effectkeys=effectkeys
+        ),
         open(cachepath, 'w')
     )
 
