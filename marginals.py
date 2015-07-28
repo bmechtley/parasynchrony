@@ -316,6 +316,7 @@ def run_slice(config, start, stop):
         stop
     )
 
+    # Write the pickle file.
     cPickle.dump(
         dict(
             counts=counts,
@@ -332,6 +333,7 @@ def run_slice(config, start, stop):
         open('%s-%d-%d.pickle' % fnkeys, 'w')
     )
 
+    # Write the completion file.
     open('%s-%d-%d-complete.txt' % fnkeys, 'a').close()
 
     print time.clock() - bt
@@ -470,6 +472,7 @@ def gather_runs(config):
         os.remove(cfn)
         os.remove(completion_fn)
 
+    # Write the gathered pickle file.
     fullnum = 0
     fulls = glob.glob(cacheprefix + '-gathered-*.pickle')
 
@@ -496,6 +499,15 @@ def gather_runs(config):
         open(cachepath, 'w')
     )
 
+    # Remove all files only after this has been saved.
+    # Ends while gathering: no gathered pickle, files saved, no completion
+    # Ends while saving: incomplete gathered pickle, files saved, no completion
+    for i, cfn in enumerate(cfns):
+        os.remove(cfn)
+        completion_fn = os.path.splitext(cfn)[0] + '-complete.txt'
+        os.remove(completion_fn)
+
+    # Save completion file.
     open('%s-full-%d-complete.txt' % (cacheprefix, fullnum), 'a').close()
 
 
