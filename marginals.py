@@ -441,11 +441,11 @@ def gather_runs(config):
                     gmaxima = maxima[sampkey][popkey][effectkey]
 
                     # Shorthand for arrays local to this set of cached values.
-                    csampsleft = cf['samplesleft'][popkey][effectkey]
-                    csamps = cf['samples'][popkey][effectkey]
-                    ccounts = cf['counts'][popkey][effectkey]
+                    csampsleft = cf['samplesleft'][sampkey][popkey][effectkey]
+                    csamps = cf['samples'][sampkey][popkey][effectkey]
+                    ccounts = cf['counts'][sampkey][popkey][effectkey]
 
-                    cmaxima = cf['maxima'][popkey][effectkey]
+                    cmaxima = cf['maxima'][sampkey][popkey][effectkey]
                     ncsamps = len(csamps) - csampsleft
 
                     # Increment histograms.
