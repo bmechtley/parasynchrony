@@ -464,8 +464,8 @@ def gather_runs(config):
                         argmaxima, gmaxima, cmaxima
                     )
 
-        os.remove(cfn)
-        os.remove(completion_fn)
+            os.remove(cfn)
+            os.remove(completion_fn)
 
     fullnum = 0
     fulls = glob.glob(cacheprefix + '-full-*.pickle')
