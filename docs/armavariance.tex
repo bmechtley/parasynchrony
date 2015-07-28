@@ -1,0 +1,129 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{fullpage}
+\usepackage{comment}
+\usepackage{lscape}
+\usepackage{relsize}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\begin{document}
+
+\newcommand{\trans}{^{\mathsmaller T}}
+\newcommand{\xx}{{xx}}
+
+\section{VARMA representation.}
+
+Let a VARMA model be written as the LTI system:
+\begin{equation}
+\label{eqn:VARMA}
+\sum_{i=0}^p P_i x_{t-i} = \sum_{i=0}^q Q_i \varepsilon_{t-i}
+\end{equation}
+where $P_i$ are the autoregression coefficients for the system state, $x_t$, and $Q_i$ are the moving average coefficients for white noise, $\varepsilon_t \sim N(0, \Sigma_\varepsilon)$. 
+
+Taking the $Z$-transform, $X(z) = \sum_{n=-\infty}^{\infty}{x_n z^{-n}}$, of both sides:
+\begin{equation}
+\sum_{i=0}^p P_i z^i = \sum_{i=0}^q Q_i z^i
+\end{equation}
+
+The transfer function of the system is then defined as
+\begin{equation}
+    \mathcal{H}(z) = \mathcal{P}^{-1}(z) \mathcal{Q}(z)
+    \label{eqn:transferfunction}
+\end{equation}
+where
+\begin{align}
+    \label{eqn:transfercomponents}
+    \mathcal{P}(z) &= \sum_{i=0}^p P_i z^i \nonumber \text{ and} \\
+    \mathcal{Q}(z) &= \sum_{i=0}^q Q_i z^i
+\end{align}
+
+$H_i$ will be used to denote the $i$-th term of the series expansion of $\mathcal{H}(z)$.
+
+\subsection{State space representation for our model.}
+In LTI state-space representation\footnote{See G. Reinsel, Elements of Multivariate Time Series Analysis, 2nd ed., 1997, p. 52 and \url{https://en.wikipedia.org/wiki/State-space_representation}. All the details for vector ARMA models can be found in Section 2.3 of Reinsel, where he uses the symbols $\Phi$ and $\Theta$ for $P$ and $Q$, respectively.}, the linearization of our model is defined as:
+\begin{equation}
+x_t = A x_{t-1} + B \varepsilon_{t}, ~~~\varepsilon_t \sim \mathcal{N}(0, \Sigma_\varepsilon)
+\end{equation}
+where $A$ is the Jacobian of the difference equation with respect to the population terms evaluated at some stable equilibrium and $B$ is the Jacobian with respect to the stochastic terms. So, in the form of Eqns. (\ref{eqn:VARMA}-\ref{eqn:transfercomponents}), $p=1$, $P_0=I$, $P_1=-A$, $q=0$, and $Q_0=B$, so $\mathcal{H}(z) = (I-Az)^{-1}B$.
+
+The state space representation is returned by the method \texttt{state\_space} in the class \texttt{models.stochastic. StochasticModel}, which returns a 4-tuple ($A$, $B$, $I$, $0$). $A$ and $B$, for particular parameter arguments, are computed in the method \texttt{linearize} and cached.
+
+\section{VARMA autocovariance.}
+
+To find the autocovariance of the process, we can first post-multiply by $x\trans _{t-L}$ and take the expectations of each side:
+\begin{equation}
+    \sum_{i=0}^p P_i E(x_{t-i} x\trans_{t-L}) = \sum_{i=0}^q Q_i E(\varepsilon_{t-i} x\trans_{t-L})
+    \label{eqn:expectation}
+\end{equation}
+The infinite MA representation of an ARMA process is:
+\begin{equation}
+    x_{t-L} = \sum_{i=0}^{\infty} H_i \varepsilon_{t-L-i}
+\end{equation}
+So substituting the right hand side for $x_{t-L}$ in (\ref{eqn:expectation}),
+\begin{equation}
+    \sum_i^p P_i E(x_{t-i} x\trans_{t-L}) = \sum_i^q \sum_j^{\infty} Q_i E(\varepsilon_{t-i} \varepsilon\trans_{t-L-j}) H\trans_j.
+\end{equation}
+$E(x_{t-i}x\trans_{t-L}) = \gamma_{xx}(L-i)$, the autocovariance of $x$ at lag $L - i$ timesteps, and $E(\varepsilon_{t-i} \varepsilon\trans_{t-L-j}) = \Sigma_{\varepsilon}$ for $j = i-L$ and $0$ otherwise. So,
+\begin{equation}
+    \sum_{i=0}^p P_i \gamma_\xx(L-i) = \sum_{i=L}^q Q_i \Sigma_\varepsilon H\trans_{i-L}.
+\end{equation}
+If $P_0 = I$ (as it does for our model), then
+\begin{equation}
+    I\gamma_{xx}(L) + \sum^p_{i=1}P_i\gamma_{xx}(L-i)=\sum_{i=L}^q Q_i \Sigma_\varepsilon,
+\end{equation}
+and we obtain the recursive equation
+\begin{equation}
+    \gamma_\xx(L) = -\sum^p_{i=1} P_i \gamma_\xx(L-i) + \sum_{i=L}^q Q_i \Sigma_\varepsilon H\trans_{i-L}.
+    \label{eqn:recursion}
+\end{equation}
+\subsection{Our model.}
+For our linearized model $p=1$ and $q=0$. and let $P_0=I$, $P_1=-A$, and $Q_0=B$. Then,
+\begin{equation}
+    H_0 = P_0^{-1} Q_0 = I B = B.
+\end{equation}
+Applying the recursive equation for autocovariance from (\ref{eqn:recursion}),
+\begin{align}
+    \gamma_\xx(1) &= -(-A) \gamma_\xx(0) \\
+                  &= A \gamma_\xx(0)
+\end{align}
+Since $\gamma_\xx(-L) = \gamma_\xx(L)\trans$,
+\begin{align}
+    \Sigma_x = \gamma_\xx(0)   &= -(-A)\gamma_\xx(-1) + B \Sigma_\varepsilon B\trans \\
+                                &= A\gamma_\xx(1)\trans + B \Sigma_\varepsilon B\trans\\
+                                &= A (A \gamma_\xx(0))\trans + B \Sigma_\varepsilon B\trans\\
+                                &= A \gamma_\xx(0) A\trans + B \Sigma_\varepsilon B\trans\\
+                                &= A \Sigma_x A\trans + B \Sigma_\varepsilon B\trans
+\end{align}
+Autocovariance at higher lags can be computed as $\gamma_\xx(L) = A^L\Sigma_x$, since $Q_i = 0$ for $i > 0$. 
+
+Covariance for our model is computed in the method \texttt{calculate\_covariance} of the class \texttt{models.stochastic. StochasticModel}.
+\subsection{Solving for the covariance matrix.}
+$\Sigma_x = A \Sigma_x A\trans + B \Sigma_\varepsilon B\trans$ is of the form $X = AXA\trans + C$, which can be solved with eigendecomposition. We want to solve $L(X) = X - AXA^* = C$. Letting the eigenvectors of $A$ make up columns of the matrix $U$ and the eigenvalues make up the column vector $\Gamma$,
+\begin{align}
+    C     &= \sum_{i,j} \Gamma_{ij} u_i u_j^*\\
+          &= \sum_j U \Gamma e_j u_j^*\\
+          &= \sum_j U \Gamma e_j(U e_j)^*\\
+          &= \sum_j U \Gamma e_j e_j\trans U^*\\
+          &= U \Gamma (\sum_j e_j e_j\trans) U^*\\
+          &= U \Gamma U^*
+\end{align}
+where $e_i$ form the standard basis.  So,
+\begin{equation}
+    \Gamma = U^{-1}C(U^{-1})^*
+\end{equation}
+Solving $L(\sum_{i,j}\tilde{X}_{ij}u_iu_j^*) = \sum_{i,j} \Gamma_{ij} u_i u_j^*$,
+\begin{equation}
+    \tilde{X}_{ij} = \frac{1}{1-\lambda_i\overline{\lambda_j}} \Gamma_{ij}
+\end{equation}
+and
+\begin{equation}
+    X = U \tilde{X} U^*.
+\end{equation}
+
+This is computed in the function \texttt{models.utilities.solve\_axatc}.
+
+\end{document}

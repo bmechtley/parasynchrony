@@ -1,0 +1,309 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{fullpage}
+\usepackage{comment}
+\usepackage{lscape}
+
+\begin{document}
+
+\newcommand{\pn}[1]{\left(#1\right)}
+
+\section{Nicholson-Bailey}
+\begin{align*}
+    H_{t+1} &= R H_t e^{-a P_t}\\
+    P_{t+1} &= c H_t \pn{1 - e^{-a P_t}}
+\end{align*}
+
+\subsection{Equilibrium}
+\begin{align*}
+    H_* &= \frac{R \ln{R}}{a c \pn{R-1}}\\
+    P_* &= \frac{\ln R}{a}
+\end{align*}
+
+\subsection{Stability}
+\begin{equation*}
+    A = \left[ \begin{array}{ll}
+    1 & \dfrac{-R \ln{R}}{R-1}\\
+    \dfrac{c\pn{R-1}}{R} & \dfrac{\ln{R}}{R-1}
+    \end{array} \right]
+\end{equation*}
+
+\begin{equation*}
+\begin{array}{lclcl}
+B_1 &=& -\pn{A_{11}+A_{22}}  &=& -\pn{1+\dfrac{\ln{R}}{R-1}} \\
+B_2 &=& A_{11}A_{22}-A_{12}A_{21} &=& \dfrac{R\ln{R}}{R-1} 
+\end{array}
+\end{equation*}
+
+\begin{align*}
+1 - B_1 + B_2 &= 2 + \frac{\ln{R}\pn{R+1}}{R-1} > 0\\
+1 + B_1 + B_2 &= \ln{R} > 0\\
+B_2 &> 1 \forall R > 1 \textbf{ (unstable)}
+\end{align*}
+
+
+
+\pagebreak
+\section{Nicholson-Bailey with Ricker}
+\subsection{System}
+\begin{align*}
+H_{t+1} &= H_t e^{r \pn{1-H_t/K} -a P_t}\\
+P_{t+1} &= c H_t \pn{1-e^{-a P_t}}
+\end{align*}
+
+\subsection{Equilibrium}
+\begin{align*}
+    H_* &= \frac{P_*}{c \pn{1-e^{-a P_*}}}\\
+    P_* &= \frac{r}{a} \pn{1-\frac{H_*}{K}}
+\end{align*}
+
+\subsection{Stability}
+\begin{equation*}
+    J = \left[
+        \begin{array}{ll}
+        \pn{1-rq}e^{r\pn{1-q}-aP^*} &
+        -a e^{r\pn{1-q}-aP^*}\\
+        ce^{-aP^*} &
+        -acH^*e^{-aP^*}
+        \end{array}
+    \right]
+\end{equation*}
+
+\begin{align*}
+    \lambda^2-\lambda \pn{1-r+\phi} + \pn{1 - rq}\phi + r^2q\pn{1-q} = 0\\
+    \text{where } \phi = r\pn{1-q} / \left[1 - \exp{\pn{-r\pn{1-q}}}\right]
+\end{align*}
+where $q$ is $H^* / K$, the ``extent to which the predator can depress the prey below its carrying capacity'' or ``depression of prey equilibrium.'' So,
+
+\begin{align*}
+    H_* &= \frac{P_*}{c \pn{1-e^{-aP_*}}}\\
+    P_* &= \frac{r}{a} \pn{1-q}
+\end{align*}
+
+\subsection{Working out $H^*$, $P^*$}
+\begin{align*}
+    H_t &= H_t \exp\left[r\pn{1-\frac{H_t}{K}-a P_t}\right]\\
+    P_t &= cH_t \exp\pn{-aP_t}
+\end{align*}
+
+\begin{align*}
+    H_t\left\{1 - \exp\left[r\pn{1-\frac{H_t}{K}} - aP_t\right]\right\} &= 0\\
+    H_t &= 0 \text{ or}\\
+    \exp\left[r\pn{1-\frac{H_t}{K}} - aP_t\right] &= 1\\
+    r\pn{1-\frac{H_t}{K}} - aP_t &= 0\\
+    P_t &= \frac{r}{a}\pn{1-\frac{H_t}{K}}\\
+        &= \frac{r}{a}\pn{1-q}
+\end{align*}
+
+\begin{align*}
+    P_t &= c H_t \exp\pn{-aP_t}\\
+    \frac{r}{a}\pn{1-\frac{H_t}{K}} &= c H_t \exp\left[-a \frac{r}{a}\pn{1-\frac{H_t}{K}}\right]\\
+    &= c H_t \exp\left[-r\pn{1-\frac{H_t}{K}}\right]\\
+    \frac{r}{ac}\pn{1-\frac{H_t}{K}} &= H_t \exp\left[-r\pn{1-\frac{H_t}{K}}\right]\\
+    0 &= H_t\exp\left[-r\pn{1-\frac{H_t}{K}}\right] - \frac{r}{ac}\pn{1-\frac{H_t}{K}}\\
+      &= H_t\exp\left[-r\pn{1-q}\right]-\frac{r}{ac}\pn{1-q}
+\end{align*}
+
+\subsection{Zeros}
+
+\begin{align*}
+    H_te^{-r}e^{r\frac{H_t}{K}} - \frac{r}{ac} + \frac{rH_t}{acK} = 0\\
+    H_te^{-r}e^{rq} - \frac{r}{ac} + \frac{r}{ac} q = 0
+\end{align*}
+
+\begin{align*}
+    F\pn{H_t, r, a, c, K} &= H_te^{-r}e^{r\frac{H_t}{K}}-\frac{r}{ac}+\frac{rH_t}{acK}\\
+    \frac{\partial F}{\partial H_t} &= \frac{e^r}{acK} \left[ a c \exp\pn{r \frac{H_t}{K}}\left(r H_t + K\right) + r e^r\right]\\
+    \frac{\partial F}{\partial r} &= \frac{\pn{H_t - K}}{acK} acH_t\exp\left[r\pn{\frac{H_t}{K} - 1}+1\right]\\
+    \frac{\partial F}{\partial K} &= \frac{r H_t \left\{a c H_t \exp\left[r\pn{\frac{H_t}{K}-1}\right] + 1\right\}}{acK^2}\\
+    \frac{\partial F}{\partial a} &= \frac{r\pn{1-\frac{H_t}{K}}}{a^2c}\\
+    \frac{\partial F}{\partial c} &= \frac{r\pn{1-\frac{H_t}{K}}}{ac^2}
+\end{align*}
+
+For
+\begin{align*}
+F\pn{H, r, a, c, K} = H e^{-r\pn{1-\frac{H}{K}}} - \frac{r}{ac} \pn{1-\frac{H}{K}} = 0
+\end{align*}
+Wolfram gives roots:
+\begin{align*}
+    acK \ne 0 \text{ and } H=0 \text{ and } r=0\\
+    H \ne K \text{ and } r = \frac{KW_n(acH)}{K-H} \text{ and } n \in \mathbb{Z}
+\end{align*}
+
+where $W_n$ is the analytic continuation of the product log function and $W(z)$, the product log function is the solution of $W(z) = W(z) e^{W(z)}$. We have also worked this out as follows:
+
+\begin{align*}
+    G\pn{H, r, a} = F\pn{H, r, a, 1, 1} &= H \exp{\pn{-r\pn{1 - H}}} - \frac{r}{a}\pn{1-H}\\
+    H\exp{\pn{-r\pn{1-H}}}                    &= \frac{r}{a} \pn{1-H}\\
+    H\exp{\pn{-r}}\exp{\pn{rH}}               &= \frac{r}{a}\pn{1-H}\\
+    \frac{r}{r} H \exp{\pn{-r}} \exp{\pn{rH}} &= \frac{r}{a}\pn{1-H}\\
+    rH\exp{\pn{rH}} &= \frac{r}{a\exp{\pn{-r}}} \pn{1-H}\\
+                    &= \frac{r}{a\exp{\pn{-r}}} - \frac{rH}{a\exp{\pn{-r}}}\\
+                    &= \frac{r\exp{\pn{r}}}{a} - \frac{\exp{\pn{r}}}{a} H.
+\end{align*}
+
+So,
+\begin{align*}
+    rH &= \widetilde{W}\pn{\frac{\exp{r}}{a}, r \exp{\pn{r}}}\\
+    H &= \frac{\widetilde{W}\pn{\frac{\exp{r}}{a}, r \exp{\pn{r}}}}{r}, \text{ where }\\
+    \widetilde{W}\pn{a,b}\exp{\pn{\widetilde{W}\pn{a,b}}} &= -a \widetilde{W}\pn{a,b} + b
+\end{align*}
+
+
+\pagebreak
+\section{Negative Binomial Distribution}
+\subsection{System}
+\begin{align*}
+    N_{t+1} &= \lambda N_t \pn{1+\frac{aP_t}{k}}^{-k}\\
+    P_{t+1} &= c N_t \left[1-\pn{1+\frac{aP_t}{k}}^{-k}\right]
+\end{align*}
+
+\subsection{Equilibrium}
+\begin{alignat*}{4}
+    N_t &= \lambda N_t \pn{1+\frac{aP_t}{k}}^{-k}\\
+    0   &= N\pn{\lambda\pn{1+\frac{aP_t}{k}}^{-k} - 1}\\
+    N   &= 0;
+        & \lambda \pn{1+\frac{aP_t}{k}}^{-k} &= 1\\
+    &   &     \pn{1+\frac{aP_t}{k}}^{-k}     &= \lambda^{-1}\\
+    &   &     1+\frac{aP_t}{k}               &= \lambda^{\frac{1}{k}}\\
+    &   &     \frac{aP_t}{k}                 &= \lambda^{\frac{1}{k}} -1\\
+    &   &     aP_t                           &= k\pn{\lambda^{\frac{1}{k}} - 1}\\
+    &   &     P^*                            &= \frac{k}{a} \pn{\lambda^{\frac{1}{k}} - 1}
+\end{alignat*}
+and
+\begin{align*}
+    P_t &= c N_t \left[1 - \pn{1+\frac{aP_t}{k}}^{-k}\right]\\
+    \frac{P_t}{N_t} &= c \left[1-\pn{1+\frac{aP_t}{k}}^{-k}\right]\\
+    \frac{N_t}{P_t} &= \frac{1}{c}\left[ 1 - \pn{1+\frac{aP_t}{k}}^{-k} \right]^{-1}\\
+    N_t &= \frac{P_t}{c\left[ 1 - \pn{1+\frac{aP_t}{k}}^{-k} \right]}\\
+    &= P_t \left\{c\left[ 1 - \pn{1 + a \frac{k}{a}\pn{\lambda^{\frac{1}{k}} - 1}}^{-k} \right]\right\}^{-1}\\
+    &= P_t\left\{c \left[ 1 - \pn{1 + \lambda^{\frac{1}{k}} - 1}^{-k} \right]\right\}^{-1}\\
+    &= \frac{P_t}{c \pn{1 - \lambda^{\frac{1}{k}^{-k}}}}\\
+    &= \frac{P_t}{c \pn{1-\lambda^{-1}}}\\
+    \frac{1}{N_t} &= \frac{c - \frac{c}{\lambda}}{P_t}\\
+    &= c \pn{\frac{1}{P_t} -\frac{1}{\lambda P_t}}\\
+    &= c \pn{\frac{\lambda - 1}{P_t \lambda}}\\
+    N^* &= \frac{P^*\lambda}{c\pn{\lambda-1}}.
+\end{align*}
+
+\begin{align*}
+    N^* &= \frac{\lambda P^*}{c\pn{\lambda - 1}}\\
+    P^* &= \frac{k}{a} \pn{\lambda^{\frac{1}{k}} - 1}
+\end{align*}
+
+\subsection{Stability}
+\newcommand{\aPK}{\frac{aP^*}{k}}
+\newcommand{\fol}{\frac{1}{\lambda}}
+\newcommand{\fok}{\frac{1}{k}}
+\newcommand{\fka}{\frac{k}{a}}
+\begin{equation*}
+J = \left[ \begin{array}{ll}
+     1 & 
+     -a \lambda N^* \pn{1+\frac{aP^*}{k}}^{-k-1}\\
+     c \pn{1-\fol} &
+     -a c N^* \pn{1 + \frac{aP^*}{k}}^{-k-1}
+ \end{array} \right]
+\end{equation*}
+
+\begin{align*}
+B_1 &= -\pn{A_{11} + A_{22}}\\
+    &= -\lambda \pn{1+\aPK}^{-k} - acN^*\pn{1+\aPK}^{-k-1}\\
+    &= -\lambda\fol - ac\lambda\fka \pn{\lambda^\fok-1} \pn{1+\frac{a \fka \pn{\lambda^\fok - 1}}{k}}^{-k-1}\\
+    &= -1 - ac \lambda \fka \pn{\lambda^\fok - 1} \pn{1 + \lambda^\fok - 1}^{-k-1}\\
+    &= -1 - ck\lambda \pn{\lambda^\fok -1}\lambda^{\frac{-k-1}{k}}\\
+    &= -1 - ck\pn{\lambda^{1+\fok-\frac{k-1}{k}} - \lambda^{\frac{-k-1}{k}}}\\
+    &= -1 - ck\pn{\lambda^{\frac{k+1-k-1}{k}} - \lambda^{\frac{-k-1}{k}}}\\
+    &= -1 - ck\pn{1-\lambda^{\frac{-k-1}{k}}}.
+\end{align*}
+
+
+
+\pagebreak
+\section{Two-patch Nicholson-Bailey with NBD}
+\subsection{System}
+
+\newcommand{\Ht}[1] {H^{(#1)}_t}
+\newcommand{\Pt}[1] {P^{(#1)}_t}
+\newcommand{\Htt}[1] {H^{(#1)}_{t+1}}
+\newcommand{\Ptt}[1] {P^{(#1)}_{t+1}}
+\newcommand{\apk}[1] {\pn{1+\frac{a\Pt{#1}}{k}}}
+
+\newcommand{\lt}{\left}
+\newcommand{\rt}{\right}
+
+\begin{align*}
+    F^{(1)}(H_t, a, c, \lambda, k, \mu_h, \mu_p) = \Htt{1} &= \pn{1-\mu_H} \lambda \Ht{1} \apk{1}^{-k} + \mu_H \lambda \Ht{2} \apk{2}^{-k}\\
+    G^{(1)}(P_t, a, c, \lambda, k, \mu_h, \mu_p) = \Ptt{1} &= (1-\mu_P) c \Pt{1} \lt[1-\apk{1}^{-k}\rt] + \mu_P c \Ht{2} \lt[1-\apk{2}^{-k}\rt]\\
+    F^{(2)}(H_t, a, c, \lambda, k, \mu_h, \mu_p) = \Htt{2} &= \mu_H \lambda \Ht{1} \apk{1}^{-k} + (1-\mu_H) \lambda \Ht{2} \apk{2}^{-k}\\
+    G^{(2)}(P_t, a, c, \lambda, k, \mu_h, \mu_p) = \Ptt{2} &= \mu_P c \Ht{1} \lt[1-\apk{1}^{-k}\rt] + (1-\mu_P) c \Ht{2} \lt[1-\apk{2}^{-k}\rt]
+\end{align*}
+
+\subsection{Equilibrium}
+\begin{align*}
+    H^{1}_* &= \frac{\lambda P^{1}_*}{c\pn{\lambda - 1}}\\
+    P^{1}_* &= \frac{k}{a} \pn{\lambda^{\frac{1}{k}} - 1}\\
+    H^{2}_* &= \frac{\lambda P^{2}_*}{c\pn{\lambda - 1}}\\
+    P^{2}_* &= \frac{k}{a} \pn{\lambda^{\frac{1}{k}} - 1}
+\end{align*}
+
+\begin{landscape}
+\subsection{Stability}
+\begin{equation*}
+\arraycolsep=3.2pt\def\arraystretch{3.2}
+J = \left[ \begin{array}{llll}
+     \dfrac{\partial F^{(1)}}{\partial H^{(1)}_t} & 
+     \dfrac{\partial F^{(1)}}{\partial P^{(1)}_t} &
+     \dfrac{\partial F^{(1)}}{\partial H^{(2)}_t} &
+     \dfrac{\partial F^{(1)}}{\partial P^{(2)}_t}\\
+     
+     \dfrac{\partial G^{(1)}}{\partial H^{(1)}_t} & 
+     \dfrac{\partial G^{(1)}}{\partial P^{(1)}_t} &
+     \dfrac{\partial G^{(1)}}{\partial H^{(2)}_t} &
+     \dfrac{\partial G^{(1)}}{\partial P^{(2)}_t}\\
+     
+     \dfrac{\partial F^{(2)}}{\partial H^{(1)}_t} & 
+     \dfrac{\partial F^{(2)}}{\partial P^{(1)}_t} &
+     \dfrac{\partial F^{(2)}}{\partial H^{(2)}_t} &
+     \dfrac{\partial F^{(2)}}{\partial P^{(2)}_t}\\
+     
+     \dfrac{\partial G^{(2)}}{\partial H^{(1)}_t} & 
+     \dfrac{\partial G^{(2)}}{\partial P^{(1)}_t} &
+     \dfrac{\partial G^{(2)}}{\partial H^{(2)}_t} &
+     \dfrac{\partial G^{(2)}}{\partial P^{(2)}_t}
+ \end{array} \right]
+ \end{equation*}
+
+ \begin{equation*}
+    A = J |_* = \left[ \begin{array}{llll}
+    \lambda (1 - \mu_h) \apk{1}^{-k} &
+    -a \lambda (1 - \mu_h) \Ht{1} \apk{1}^{-k-1} &
+    \lambda \mu_h \apk{2}^{-k} &
+    -a \lambda \mu_h \Ht{2} \apk{1}^{-k-1} \\
+    
+    c (1 - \mu_p) \left[1-\apk^{-k}\right] &
+    a c (1 - \mu_p) \Ht{1} \apk^{-k-1} &
+    c \mu_p \left[ 1 - \apk^{-k} \right] & 
+    a c \mu_p \Ht{2} \apk^{-k-1}\\
+    
+    \lambda \mu_h \apk^{-k} &
+    -a \lambda \mu_h \Ht^{1} \apk^{-k-1} &
+    \lambda (1 - \mu_h) \apk^{-k} &
+    -a \lambda (1-\mu_h) \Ht{2} \apk^{-k-1}\\
+    
+    c \mu_p \left[ 1 - \apk{-k} \right] &
+    a c \mu_p \Ht{1} \apk^{-k-1} &
+    c (1 - \mu_p) \left[ 1 - \apk^{-k} \right] &
+    a c (1-\mu_p) \Ht{2} \apk^{-k-1}
+  \end{array} \right]
+\end{equation*}
+\end{landscape}
+
+\subsection{Linearization}
+\begin{align}
+    h_{t+1} &= A h_t + Q \epsilon
+\end{align}
+
+\end{document}
