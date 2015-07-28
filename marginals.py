@@ -417,6 +417,11 @@ def gather_runs(config):
         cfns = glob.glob(cacheprefix + '-%s-*-*.pickle' % sampkey)
 
         for i, cfn in enumerate(cfns):
+            completion_fn = os.path.splitext(cfn) + '-complete.txt'
+
+            if not os.path.isfile(completion_fn):
+                continue
+
             cf = cPickle.load(open(cfn))
             print '\t%d / %d: %s' % (i, len(cfns), cfn)
 
@@ -457,7 +462,18 @@ def gather_runs(config):
                         argmaxima, gmaxima, cmaxima
                     )
 
-    cachepath = '%s-full.pickle' % cacheprefix
+        os.remove(cfn)
+        os.remove(completion_fn)
+
+    fullnum = 0
+    fulls = glob.glob(cacheprefix + '-full-*.pickle')
+
+    if len(fulls):
+        fullnum = max([
+            int(os.path.splitext(fn)[0].split('-')[-1]) for fn in fulls
+        ]) + 1
+
+    cachepath = '%s-full-%d.pickle' % (cacheprefix, fullnum)
 
     # TODO: It might be good to save the ordered varkeys etc. for easy cross-
     # TODO:     reference with maxima / samples. User of this file shouldn't
