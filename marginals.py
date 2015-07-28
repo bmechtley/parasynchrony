@@ -402,7 +402,6 @@ def gather_runs(config):
 
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
 
-    samplings = config['args']['samplings']
     storage_arrays = utilities.zero_storage_arrays(config)
     counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
         'counts', 'maxima', 'samples', 'samplesleft'
@@ -472,14 +471,14 @@ def gather_runs(config):
         os.remove(completion_fn)
 
     fullnum = 0
-    fulls = glob.glob(cacheprefix + '-full-*.pickle')
+    fulls = glob.glob(cacheprefix + '-gathered-*.pickle')
 
     if len(fulls):
         fullnum = max([
             int(os.path.splitext(fn)[0].split('-')[-1]) for fn in fulls
         ]) + 1
 
-    cachepath = '%s-full-%d.pickle' % (cacheprefix, fullnum)
+    cachepath = '%s-gathered-%d.pickle' % (cacheprefix, fullnum)
 
     cPickle.dump(
         dict(
@@ -496,6 +495,8 @@ def gather_runs(config):
         ),
         open(cachepath, 'w')
     )
+
+    open('%s-full-%d-complete.txt', 'a').close()
 
 
 def main():
