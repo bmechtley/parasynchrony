@@ -469,9 +469,6 @@ def gather_runs(config):
                         argmaxima, gmaxima, cmaxima
                     )
 
-        os.remove(cfn)
-        os.remove(completion_fn)
-
     # Write the gathered pickle file.
     fullnum = 0
     fulls = glob.glob(cacheprefix + '-gathered-*.pickle')
