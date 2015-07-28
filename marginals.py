@@ -496,7 +496,7 @@ def gather_runs(config):
         open(cachepath, 'w')
     )
 
-    open('%s-full-%d-complete.txt', 'a').close()
+    open('%s-full-%d-complete.txt' % (cacheprefix, fullnum), 'a').close()
 
 
 def main():
