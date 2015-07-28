@@ -415,6 +415,9 @@ def gather_runs(config):
     varkeys, paramkeys, sampkeys = [], [], []
     varkeyindices = dict()
 
+    if not len(cfns):
+        return
+
     for i, cfn in enumerate(cfns):
         completion_fn = os.path.splitext(cfn)[0] + '-complete.txt'
 
@@ -505,7 +508,7 @@ def gather_runs(config):
         os.remove(completion_fn)
 
     # Save completion file.
-    open('%s-full-%d-complete.txt' % (cacheprefix, fullnum), 'a').close()
+    open('%s-gathered-%d-complete.txt' % (cacheprefix, fullnum), 'a').close()
 
 
 def main():
