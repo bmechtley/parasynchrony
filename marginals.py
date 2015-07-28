@@ -422,6 +422,8 @@ def gather_runs(config):
             if not os.path.isfile(completion_fn):
                 continue
 
+            print 'Gathering %s.' % cfn
+
             cf = cPickle.load(open(cfn))
             print '\t%d / %d: %s' % (i, len(cfns), cfn)
 
