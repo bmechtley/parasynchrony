@@ -417,7 +417,7 @@ def gather_runs(config):
         cfns = glob.glob(cacheprefix + '-%s-*-*.pickle' % sampkey)
 
         for i, cfn in enumerate(cfns):
-            completion_fn = os.path.splitext(cfn) + '-complete.txt'
+            completion_fn = os.path.splitext(cfn)[0] + '-complete.txt'
 
             if not os.path.isfile(completion_fn):
                 continue
