@@ -336,6 +336,17 @@ def run_slice(config, start, stop):
     # Write the completion file.
     open('%s-%d-%d-complete.txt' % fnkeys, 'a').close()
 
+    gather_size = int(config['file']['gather_size'])
+
+    if (
+        start % gather_size is 0 or
+        stop % gather_size is 0 or
+        ((start / gather_size) + 1) * gather_size < stop
+    ):
+        gather_low = (start / gather_size) * gather_size
+        gather_high = gather_low + gather_size
+        gather_runs(config, gather_low, gather_high)
+
     print time.clock() - bt
 
 
@@ -395,7 +406,7 @@ def generate_runs(config, runtype='qsub'):
         outfile.close()
 
 
-def gather_runs(config):
+def gather_runs(config, gather_low=None, gather_high=None):
     """
     :param config:
     """
@@ -411,6 +422,7 @@ def gather_runs(config):
 
     # Gather statistic arrays in each run's cache file.
     cfns = glob.glob(cacheprefix + '*.pickle')
+    gathered_cfns = []
 
     varkeys, paramkeys, sampkeys = [], [], []
     varkeyindices = dict()
@@ -423,6 +435,11 @@ def gather_runs(config):
 
         if not os.path.isfile(completion_fn):
             continue
+        else:
+            if gather_low is not None and gather_high is not None:
+                low = cfn.split('-')
+                if low < gather_low or low > gather_high:
+                    continue
 
         cf = cPickle.load(open(cfn))
         print '\t%d / %d: %s' % (i, len(cfns), cfn)
@@ -473,15 +490,12 @@ def gather_runs(config):
                     )
 
     # Write the gathered pickle file.
-    fullnum = 0
-    fulls = glob.glob(cacheprefix + '-gathered-*.pickle')
-
-    if len(fulls):
-        fullnum = max([
-            int(os.path.splitext(fn)[0].split('-')[-1]) for fn in fulls
-        ]) + 1
-
-    cachepath = '%s-gathered-%d.pickle' % (cacheprefix, fullnum)
+    if gather_low is not None and gather_high is not None:
+        cachepath = '%s-gathered-%d-%d.pickle' % (
+            cacheprefix, gather_low, gather_high
+        )
+    else:
+        cachepath = "%s-gathered-all.pickle" % cacheprefix
 
     cPickle.dump(
         dict(
@@ -502,13 +516,12 @@ def gather_runs(config):
     # Remove all files only after this has been saved.
     # Ends while gathering: no gathered pickle, files saved, no completion
     # Ends while saving: incomplete gathered pickle, files saved, no completion
-    for i, cfn in enumerate(cfns):
+    for cfn in gathered_cfns:
         os.remove(cfn)
-        completion_fn = os.path.splitext(cfn)[0] + '-complete.txt'
-        os.remove(completion_fn)
+        os.remove(os.path.splitext(cfn)[0] + '-complete.txt')
 
     # Save completion file.
-    open('%s-gathered-%d-complete.txt' % (cacheprefix, fullnum), 'a').close()
+    open(os.path.splitext(cachepath)[0] + '-complete.txt').close()
 
 
 def main():
