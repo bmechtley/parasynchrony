@@ -97,7 +97,7 @@ def load_spectra(srcfile):
     configuration's cross-spectra are in a unique pickle file, which are loaded
     and combined in a dict.
 
-    :param srcfile: path to the pybatchdict configuration JSON.
+    :param srcfile: (str) path to the pybatchdict configuration JSON.
     :return (dict, BatchDict): The dictionary is keyed by the unique identifier
         for the configuration run (from BatchDict.hyphenate_changes()). The
         BatchDict is from the original JSON configuration.
@@ -118,11 +118,11 @@ def plot_series(picklefile):
     Plot the simulated time series as a collection of phase space 2D histograms
     for each combination of model state variables.
 
-    :param picklefile (str): path to the pickled time series saved by
+    :param picklefile: (str) path to the pickled time series saved by
         run_config().
     """
 
-    series = cPickle.load(open(picklefile, 'r'))
+    series = cPickle.load(open(picklefile))
     pp.figure(figsize=(15, 15))
 
     models.plotting.plot_phase(
@@ -142,8 +142,8 @@ def plot_complex(srcfile, separate=False):
     Plot the raw periodogram cross-spectra for the simulations as scatterplots
     on the complex plane.
 
-    :param srcfile (str): path to pybatchdict JSON configuration
-    :param separate (bool): whether to draw plots separately or overlaid. If
+    :param srcfile: (str) path to pybatchdict JSON configuration
+    :param separate: (bool) whether to draw plots separately or overlaid. If
         separate, data points will be colored according to increasing
         frequency. If overlaid, data points will be uniformly colored according
         to NFFT.
@@ -238,8 +238,8 @@ def plot_spectra(srcfile, separate=False):
     """
     Plot the smoothed cross-spectra for a series of simulation configurations.
 
-    :param srcfile (str): path to pybatchdict configuration JSON
-    :param separate (bool): whether or not to plot different configurations
+    :param srcfile: (str) path to pybatchdict configuration JSON
+    :param separate: (bool) whether or not to plot different configurations
         separately or in a single plot. If they're in a single plot, they will
         be sorted and colored according to order.
     """
@@ -319,7 +319,7 @@ def plot_errors(srcfile):
     "mag" the MSE of the magnitudes, and "phase" the smallest positive angle
     between points.
 
-    :param srcfile (str): configuration file (pybatchdict JSON)
+    :param srcfile: (str) configuration file (pybatchdict JSON)
     """
 
     # Load spectra.
@@ -448,7 +448,11 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
     cross-spectra. Save results in pickle files in the same directory as
     srcfile.
 
-    :param srcfile (str): path to JSON configuration file.
+    :param srcfile: (str) path to JSON configuration file.
+    :param forceseries: (bool) whether or not to force [re]calculation of
+        time series.
+    :param forcespectra: (bool) whether or not to force [re]calculation of
+        spectral matrices.
     """
 
     # Load each configuration specified by the pybatchdict JSON config.
@@ -503,7 +507,7 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
                 # load it and use it for subsequent cross-spectra computations.
 
                 print '\tLoading saved %s.' % outfile
-                loadseries = cPickle.load(open(outfile, 'r'))
+                loadseries = cPickle.load(open(outfile))
                 series['linear'] = loadseries['linear']
 
         # Output pickle file for cross-spectra (analytic and estimation from
@@ -547,11 +551,12 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
                     spectra['linear'][i, j], **smoothingargs
                 )
 
-                spectra['linear_median'][i, j] = models.utilities.smooth_phasors(
-                    spectra['linear'][i, j],
-                    magargs=magargs,
-                    phasorargs=smoothingargs
-                )
+                spectra['linear_median'][i, j] = \
+                    models.utilities.smooth_phasors(
+                        spectra['linear'][i, j],
+                        magargs=magargs,
+                        phasorargs=smoothingargs
+                    )
 
             # Evaluate analytic spectral matrix.
             spectra['analytic'] = np.array([
@@ -582,6 +587,11 @@ def run_config(srcfile, forceseries=False, forcespectra=False):
 
 
 def main():
+    """
+    usage: python run_convergence.py {run, ploterrors, plotseries, plotspectra}
+        [filename]
+    """
+
     if len(sys.argv) > 2:
         if sys.argv[1] == 'run':
             run_config(

@@ -24,6 +24,17 @@ def plot_marginal(
         dim1, dim2, dimsum, hist,
         ax=None, axis=0, zdir='x', cmap='cubehelix'
 ):
+    """
+    :param dim1:
+    :param dim2:
+    :param dimsum:
+    :param hist:
+    :param ax:
+    :param axis:
+    :param zdir:
+    :param cmap:
+    """
+
     if ax is None:
         ax = pp.gca()
 
@@ -42,6 +53,14 @@ def plot_marginal(
 
 
 def plot_marginals(xs, ys, zs, hist, ax, cmap='cubehelix'):
+    """
+    :param xs:
+    :param ys:
+    :param zs:
+    :param hist:
+    :param ax:
+    :param cmap:
+    """
     plot_marginal(ys, zs, xs, hist, ax, 0, 'x', cmap)
     plot_marginal(xs, zs, ys, hist, ax, 1, 'y', cmap)
     plot_marginal(xs, ys, zs, hist, ax, 2, 'z', cmap)
@@ -50,6 +69,17 @@ def plot_marginals(xs, ys, zs, hist, ax, cmap='cubehelix'):
 def plot_percentiles(
     vk1r, vk2r, percentiles, hist, samprange, sampres, ax=None, cmap='cubehelix'
 ):
+    """
+    :param vk1r:
+    :param vk2r:
+    :param percentiles:
+    :param hist:
+    :param samprange:
+    :param sampres:
+    :param ax:
+    :param cmap:
+    """
+
     if type(cmap) is str:
         cmap = matplotlib.cm.get_cmap(cmap)
 
@@ -87,9 +117,9 @@ def plot_percentiles(
 
 def make_plots(cached, show_marginals=True, percentiles=(5, 50, 95)):
     """
-    TODO: This.
-
-    :param config:
+    :param cached:
+    :param show_marginals:
+    :param percentiles:
     """
 
     print 'Plotting marginals.'

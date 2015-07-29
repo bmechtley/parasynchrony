@@ -72,11 +72,11 @@ def process_products(opts):
     Parallel worker for computing fraction of average synchrony. Used by
     make_products.
 
-    :param opts (dict): dictionary of input parameters, including keys:
-        params (dict): parameter dictionary of the form
+    :param opts: (dict): dictionary of input parameters, including keys:
+        params: (dict) parameter dictionary of the form
             {name: {default: default, range: (low, high), res: resolution}.
-        k1 (str): Y parameter name.
-        k2 (str): X parameter name.
+        k1: (str) Y parameter name.
+        k2: (str) X parameter name.
     :return: (R1, R2) dimensional list (not array) of dictionaries where each
         key is a different synchrony metric, e.g. fracavgsync. See
         fraction_synchrony for more info.
@@ -91,7 +91,7 @@ def process_products(opts):
 
     keycombos = list(combinations_with_replacement(varyingkeys, 2))
     strargs = '%d / %d (%s, %s) (PID %d).' % (
-         keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2, os.getpid()
+        keycombos.index((k1, k2)) + 1, len(keycombos), k1, k2, os.getpid()
     )
 
     result = None
@@ -115,7 +115,7 @@ def process_products(opts):
         if k1 != k2:
             result = [[fracsync(v1, v2) for v2 in r2] for v1 in r1]
             result = {
-                k: np.array([[cell[k] for cell in row ] for row in result])
+                k: np.array([[cell[k] for cell in row] for row in result])
                 for k in result[0][0].keys()
             }
         else:
@@ -142,10 +142,10 @@ def make_products(
     Compute fraction of synchrony metrics across combinations of values for each
     pair of model parameters.
 
-    :param params (dict): Parameter dictionary, of the form
+    :param params: (dict) Parameter dictionary, of the form
         {name: {default: default, range: (low, high), res: resolution}.
-    :param pool (multiprocessing.Pool): pool used for parallel computation.
-    :param cacheprefix (str): prefix for cached pickle files. Hash of
+    :param processes: (int) number of processes to use for computation.
+    :param cacheprefix: (str) prefix for cached pickle files. Hash of
         parameters will be appended for each process.
     :return: (P, P, R1, R2) dimensional list (not array) of dictionaries where
         each key is a different synchrony metric, e.g. fracavgsync. See
@@ -159,7 +159,7 @@ def make_products(
     # with the different metrics returned by fraction_synchrony across the
     # combination of each pair of varying parameters.
     cachepath = '%s-products.pickle' % cacheprefix
-    if not s.path.exists(cachepath):
+    if not os.path.exists(cachepath):
         print 'Computing with %d processes.' % processes
         btime = time.clock()
         products = utilities.multipool(
@@ -204,13 +204,15 @@ def plot_fracsync(params=None, metric=None, filename=None, metricname=""):
     Plot fraction of host synchrony due to host effects across combinations of
     values for each pair of model parameters.
 
-    :param params (dict): Parameter dictionary, of the form
+    :param params: (dict) Parameter dictionary, of the form
         {name: {default: default, range: (low, high), res: resolution}. Should
         be the same dictionary used to produce the products parameter.
-    :param products (list): (P, P, R1, R2) dimensional list (not array)
+    :param metric: (str) metric to plot. Otherwise, plot all metrics.
+    :param products: (list) (P, P, R1, R2) dimensional list (not array)
         containing dictionaries where each key is a different synchrony metric,
         e.g. fracavgsync. See fraction_synchrony for more info.
-    :param filename (str): Output filename for plot.
+    :param filename: (str) Output filename for plot.
+    :param metricname: (str) descriptive name of the metric to plot.
     """
 
     # Get fraction of host synchrony from host effects for all combinations

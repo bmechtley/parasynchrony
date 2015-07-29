@@ -17,7 +17,7 @@
 
 \section{VARMA representation.}
 
-Let a VARMA model be written as the LTI system:
+Let a VARMA model be written as the LTI (linear time-invariant) system:
 \begin{equation}
 \label{eqn:VARMA}
 \sum_{i=0}^p P_i x_{t-i} = \sum_{i=0}^q Q_i \varepsilon_{t-i}
@@ -53,6 +53,7 @@ where $A$ is the Jacobian of the difference equation with respect to the populat
 The state space representation is returned by the method \texttt{state\_space} in the class \texttt{models.stochastic. StochasticModel}, which returns a 4-tuple ($A$, $B$, $I$, $0$). $A$ and $B$, for particular parameter arguments, are computed in the method \texttt{linearize} and cached.
 
 \section{VARMA autocovariance.}
+This is an adaptation of Lecture 10 of D. S. G. Pollock, Econometrics. See page 4. That lecture is contained in the same folder as this document.
 
 To find the autocovariance of the process, we can first post-multiply by $x\trans _{t-L}$ and take the expectations of each side:
 \begin{equation}

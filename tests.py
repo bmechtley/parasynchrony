@@ -5,6 +5,14 @@ import models.stochastic
 
 
 def monotonic_convergence(l):
+    """
+    See if a list of values increases or decreases monotonically and if its
+    derivative also decreases monotonically.
+
+    :param l: list of values.
+    :return: (bool) whether or not there is monotonic convergence.
+    """
+
     diff = np.abs(np.diff(l))
     return np.all(np.less_equal(diff[:-1], diff[1:]))
 

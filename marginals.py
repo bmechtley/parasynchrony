@@ -48,7 +48,8 @@ printer = pprint.PrettyPrinter()
 
 def ncalcs(config):
     """
-    Computes the number of data points needed to compute a specified config file.
+    Computes the number of data points needed to compute a specified config
+    file.
 
     :param config: JSON configuration file.
     """
@@ -108,13 +109,6 @@ def zero_storage_arrays(config):
 
     paramkeys = config['props']['paramkeys']
     nparams = len(paramkeys)
-
-    nruns = functools.reduce(
-        operator.mul,
-        [len(param) for param in config['params'].values()],
-        1
-    )
-
     paramres, samplings = [config['args'][k] for k in 'resolution', 'samplings']
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
@@ -356,8 +350,8 @@ def generate_runs(config, runtype='qsub'):
     the parent directory of the configuration file.
 
     :param config: (dict) configuration dict opened with config_defaults.
-    :param runtype: (str) 'qsub' for a qsub configuration file or 'sh' for a simple
-        shell script that launches a bunch of processes.
+    :param runtype: (str) 'qsub' for a qsub configuration file or 'sh' for a
+        simple shell script that launches a bunch of processes.
     """
 
     config_dir, config_name, slice_size = [
@@ -409,6 +403,8 @@ def generate_runs(config, runtype='qsub'):
 def gather_runs(config, gather_low=None, gather_high=None):
     """
     :param config:
+    :param gather_low:
+    :param gather_high:
     """
 
     print 'Collecting data from saved runs.'

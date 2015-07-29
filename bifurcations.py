@@ -1,3 +1,10 @@
+"""
+bifurcations.py
+parasynchrony
+2014 Brandon Mechtley
+Reuman Lab, Kansas Biological Survey
+"""
+
 import numpy as np
 import matplotlib.pyplot as pp
 
@@ -5,6 +12,8 @@ import models
 
 
 def main():
+    """Main."""
+
     model = models.parasitism.get_model("nbd(2)")
     nvars = len(model.vars)
 
@@ -74,7 +83,6 @@ def main():
     pp.ylabel('$Im(\\lambda)$')
 
     pp.savefig('bifurcations-xy.pdf')
-
 
 if __name__ == '__main__':
     main()

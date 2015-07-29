@@ -26,10 +26,10 @@ def cov_integrated(model, noise, params, maxfreqs=2**12):
     increasing frequency resolution. This should converge upon the analytic
     covariance.
 
-    :param model (models.StochasticModel): the model.
-    :param noise (np.ndarray): noise covariance.
-    :param params (dict): parameter values, keyed by their sympy symbols.
-    :param maxfreqs (int): F, maximum number of frequencies to evaluate
+    :param model: (models.stochastic.StochasticModel) the model.
+    :param noise: (np.ndarray) noise covariance.
+    :param params: (dict) parameter values, keyed by their sympy symbols.
+    :param maxfreqs: (int) F, maximum number of frequencies to evaluate
         (default: 4096).
     :return (np.ndarray, np.ndarray): (F, N, N) array of covariance arrays (
         where N is the number of state variables) and a (F,) array of the number
@@ -61,8 +61,7 @@ def pool_cov(data):
 
     model, params, noise, ts = data
     return np.cov(
-        model.simulate_linear(np.zeros(len(model.vars)), params, noise, ts),
-        rowvar=1
+        model.simulate_linear(np.zeros(len(model.vars)), params, noise, ts)
     )
 
 
@@ -72,14 +71,14 @@ def cov_simulated(model, noise, params, maxtimesteps=2**12, trials=2**6):
     timesteps to obtain a distribution of covariances for each number of
     timesteps. This should converge upon the analytic covariance.
 
-    :param model (models.StochasticModel): the model
-    :param noise (np.ndarray): noise covariance.
-    :param params (dict): parameter values, keyed by their sympy symbols.
-    :param maxtimesteps (int): T, maximum number of timesteps to simulate
+    :param model: (models.stochastic.StochasticModel) the model
+    :param noise: (np.ndarray) noise covariance.
+    :param params: (dict) parameter values, keyed by their sympy symbols.
+    :param maxtimesteps: (int) T, maximum number of timesteps to simulate
         (default: 4096).
-    :param trials (int): S, the number of simulation trials for each number of
+    :param trials: (int) S, the number of simulation trials for each number of
         timesteps (default: 64).
-    :return (np.ndarray, np.ndarray): (T, S, N, N) array of covariances (where
+    :return: (np.ndarray, np.ndarray) (T, S, N, N) array of covariances (where
         N is the number of state variables) and a (T,) array of numbers of
         timesteps for which each set of S covariaces was computed.
     """
@@ -120,14 +119,14 @@ def plot_convergences(
 
     Saves a plot to plotpath.
 
-    :param model (models.StochasticModel): the model.
-    :param plotpath (str): path at which to save the plot (default:
+    :param model: (models.stochastic.StochasticModel) the model.
+    :param plotpath: (str) path at which to save the plot (default:
         covariance-test.pdf).
-    :param analytic (np.ndarray): (N, N) analytic covariance.
-    :param integrated (np.ndarray): (F, N, N) integrated covariances.
-    :param simulated (np.ndarray): (T, trials, N, N) simulated covariances.
-    :param nfreqs (np.ndarray): (F,) list of number frequencies integrated over.
-    :param nsteps (np.ndarray): (T,) list of number of timesteps simulated.
+    :param analytic: (np.ndarray) (N, N) analytic covariance.
+    :param integrated: (np.ndarray) (F, N, N) integrated covariances.
+    :param simulated: (np.ndarray) (T, trials, N, N) simulated covariances.
+    :param nfreqs: (np.ndarray) (F,) list of number frequencies integrated over.
+    :param nsteps: (np.ndarray) (T,) list of number of timesteps simulated.
     """
 
     # 1. Plot.

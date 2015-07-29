@@ -18,9 +18,11 @@ import stochastic
 
 def make_globals():
     """
+    Get a list of SymPy symbols and labels for each of the different model
+    parameters / variables.
 
-
-    :return:
+    :return: (dict, dict) two dictionaries, one mapping SymPy symbols to each
+        symbol name and one mapping descriptive labels to each symbol name.
     """
 
     return dict(
@@ -74,9 +76,11 @@ symbols, labels = make_globals()
 
 def sym_params(params):
     """
+    Convert a dictionary of symbol name: value pairs to SymPy symbol: value
+    pairs.
 
-    :param params:
-    :return:
+    :param params: (dict) dictionary of parameter values keyed by symbol name.
+    :return: (dict) dicionary of parameter values keyed by SymPy symbols.
     """
 
     return {symbols[k]: v for k, v in params.iteritems()}
@@ -151,7 +155,7 @@ def get_model(modelstr):
     population will move to another patch. Dispersal is global and
     symmetric, so each patch obtains equal migration from the others.
 
-    :param modelstr (str): String indicating the model and number of
+    :param modelstr: (str) String indicating the model and number of
         patches as "model(N)", e.g. "nb(1)" or "nbd(2)". If no parameter
         is specified (i.e. just "model"), a single-patch model will be
         returned.
