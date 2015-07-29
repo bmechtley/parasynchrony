@@ -93,6 +93,14 @@ class StochasticModel:
         # Make sure the keys in params are ordered as they are in allvars, so
         # that consecutive calls to cached lambdified matrices will have the
         # same argument ordering.
+        """
+
+        :param var:
+        :param key:
+        :param params:
+        :return:
+        """
+
         param_keys = [k for k in self.allvars if k in params]
         param_vals = [params[k] for k in param_keys]
 
@@ -117,9 +125,9 @@ class StochasticModel:
         same parameter values (e.g. computing the full spectral matrix at
         multiple frequencies).
 
-        :param params (dict): dictionary of parameter values with SymPy symbol
+        :param params: (dict) dictionary of parameter values with SymPy symbol
             keys.
-        :return (dict): dictionary with two keys, 'm1' and 'q0', each
+        :return: (dict) dictionary with two keys, 'm1' and 'q0', each
             containing a numpy array for the matrix evaluated at the parameter
             values.
         """
@@ -155,11 +163,11 @@ class StochasticModel:
         Compute numerically integrated covariance for the system state over
         a specified number of frequencies.
 
-        :param params (dict): model parameter values keyed by sympy symbols.
-        :param noise (np.ndarray): noise covariance.
-        :param nfreqs (int): number of frequencies over which to sum (default:
+        :param params: (dict) model parameter values keyed by sympy symbols.
+        :param inputcov: (np.narray) noise covariance.
+        :param nfreqs: (int) number of frequencies over which to sum (default:
             1024).
-        :return (np.ndarray): covariance matrix.
+        :return: (np.narray) covariance matrix.
         """
 
         return np.sum([
@@ -172,8 +180,8 @@ class StochasticModel:
         Return the (A, B, C, D) state space representation for the model for
         use with scipy.signal methods.
 
-        :param params (dict): model parameters keyed by sympy symbols.
-        :return (np.ndarray, np.ndarray, np.ndarray, np.ndarray): state space
+        :param params: (dict) model parameters keyed by sympy symbols.
+        :return: (np.array, np.array, np.array, np.array) state space
             representation matrices.
         """
 
@@ -186,8 +194,8 @@ class StochasticModel:
         """
         Return the zeros and poles for the model.
 
-        :param params (dict): model parameters keyed by sympy symbols.
-        :return (np.ndarray, np.ndarray): lists of zeros and poles.
+        :param params: (dict) model parameters keyed by sympy symbols.
+        :return: (np.array, np.array) lists of zeros and poles.
         """
         num, den = scipy.signal.ss2tf(*self.state_space(params))
         zpks = [scipy.signal.tf2zpk(n, den) for n in num]
@@ -206,9 +214,9 @@ class StochasticModel:
     def calculate_covariance(self, params, inputcov):
         """
         Calculate the covariance (autocovariance with lag zero) for the model.
-        :param params (dict): parameter values with SymPy symbol keys.
-        :param noise (np.array): covariance of the noise.
-        :return: (np.array): covariance matrix.
+        :param params: (dict) parameter values with SymPy symbol keys.
+        :param inputcov: (np.array) covariance of the noise.
+        :return: (np.array) covariance matrix.
         """
 
         cached = self.get_cached_matrices(params)
@@ -233,9 +241,9 @@ class StochasticModel:
         Calculate the dominant frequency of oscillation for the linearized
         model. This will be the same for all cross-spectra.
 
-        :param params (dict): dictionary of parameter values with SymPy symbol
+        :param params: (dict) dictionary of parameter values with SymPy symbol
             keys.
-        :return (float): frequency of the system's oscillation.
+        :return: (float) frequency of the system's oscillation.
         """
 
         cached = self.get_cached_matrices(params)
@@ -248,9 +256,11 @@ class StochasticModel:
 
         :param params: (dict) free parameters to the model (excluding
             state/noise). Keys are SymPy symbols.
-        :param noise: (np.array) covariance of the noise, assuming each
+        :param inputcov: (np.array) covariance of the noise, assuming each
             noise parameter is a dimension of a multivariate normal, with
             dimensions ordered according to self.noises.
+        :param v: (float) frequency at which to evaluate the spectral matrix
+            (0 to 0.5).
         :return: NxN matrix of co-spectra, where N is the number of state
             variables.
         """

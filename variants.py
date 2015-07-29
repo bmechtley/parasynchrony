@@ -33,6 +33,13 @@ import models
 
 def plot(configfile, separate=False):
     # Load the configurations.
+    """
+    Plot the cospectra for each model variant.
+
+    :param configfile: (str) path to configuration file.
+    :param separate: (bool) whether or not to plot each variant in its own plot.
+    """
+
     configdir = os.path.dirname(configfile)
     configs = utilities.load_config(configfile)
     cnames = configs.hyphenate_changes()
@@ -113,6 +120,8 @@ def plot(configfile, separate=False):
 
 
 def main():
+    """Where the action is."""
+
     if len(sys.argv) < 1:
         print 'Usage: python variants.py [separate] config.json'
     elif len(sys.argv) > 2:

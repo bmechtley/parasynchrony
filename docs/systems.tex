@@ -43,6 +43,7 @@ B_2 &=& A_{11}A_{22}-A_{12}A_{21} &=& \dfrac{R\ln{R}}{R-1}
 1 + B_1 + B_2 &= \ln{R} > 0\\
 B_2 &> 1 \forall R > 1 \textbf{ (unstable)}
 \end{align*}
+See page 114 of Murdoch et al., Consumer Resource Dynamics, last paragraph.
 
 
 
@@ -72,11 +73,19 @@ P_{t+1} &= c H_t \pn{1-e^{-a P_t}}
     \right]
 \end{equation*}
 
-\begin{align*}
-    \lambda^2-\lambda \pn{1-r+\phi} + \pn{1 - rq}\phi + r^2q\pn{1-q} = 0\\
-    \text{where } \phi = r\pn{1-q} / \left[1 - \exp{\pn{-r\pn{1-q}}}\right]
-\end{align*}
-where $q$ is $H^* / K$, the ``extent to which the predator can depress the prey below its carrying capacity'' or ``depression of prey equilibrium.'' So,
+The characteristic equation is:
+\begin{equation*}
+    \lambda^2-\lambda \pn{1-r+\phi} + \pn{1 - rq}\phi + r^2q\pn{1-q} = 0
+\end{equation*}
+where
+\begin{equation*}
+\phi = r\pn{1-q} / \left[1 - \exp{\pn{-r\pn{1-q}}}\right]
+\end{equation*}
+and $q$ is $H^* / K$, the ``extent to which the predator can depress the prey below its carrying capacity'' or ``depression of prey equilibrium.'' 
+
+In principle, one could get stability criteria from this using similar criteria to that used in the previous model. See R. M. May, M. P. Hassell, R. M. Anderson, and D. W. Tonkyn, “Density Dependence in Host-Parsitoid Models,” J. Anim. Ecol., vol. 50, no. 3, pp. 855–-865, 1981. $q$ is defined on page 859.
+
+So,
 
 \begin{align*}
     H_* &= \frac{P_*}{c \pn{1-e^{-aP_*}}}\\
@@ -155,7 +164,10 @@ So,
 
 \pagebreak
 \section{Negative Binomial Distribution}
+The negative binomial model is described in M. P. Hassell, The Spatial and Temporal Dynamics of Host-Parasitoid Interactions, Section 2.3.3.
+
 \subsection{System}
+
 \begin{align*}
     N_{t+1} &= \lambda N_t \pn{1+\frac{aP_t}{k}}^{-k}\\
     P_{t+1} &= c N_t \left[1-\pn{1+\frac{aP_t}{k}}^{-k}\right]
@@ -218,8 +230,7 @@ B_1 &= -\pn{A_{11} + A_{22}}\\
     &= -1 - ck\pn{\lambda^{\frac{k+1-k-1}{k}} - \lambda^{\frac{-k-1}{k}}}\\
     &= -1 - ck\pn{1-\lambda^{\frac{-k-1}{k}}}.
 \end{align*}
-
-
+We haven't completed the math for the stability criteria here, but they are described in page 19 in Hassell, which cites May 1978. The criterion is that stability occurs iff k < 1.
 
 \pagebreak
 \section{Two-patch Nicholson-Bailey with NBD}
@@ -300,6 +311,10 @@ J = \left[ \begin{array}{llll}
   \end{array} \right]
 \end{equation*}
 \end{landscape}
+
+We have no mathematical proof of stability criteria, but Brandon did empirical computations of eigenvalues for various parameter combinations and it supported that the stability criteria are the same as in the one-patch model (k < 1) and that the equilibria for each patch occur for the same parameters as in the one-patch model.
+
+The equilibrium can also be seen through the equilibrium solver in Brandon's code.
 
 \subsection{Linearization}
 \begin{align}

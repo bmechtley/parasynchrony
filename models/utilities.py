@@ -17,6 +17,7 @@ import sympy
 import scipy.signal
 import matplotlib.mlab as mlab
 
+
 class CacheDict(collections.OrderedDict):
     """
     Size-limited dictionary for caching results. See:
@@ -39,12 +40,13 @@ class CacheDict(collections.OrderedDict):
             while len(self) > self.size_limit:
                 self.popitem(last=False)
 
+
 def correlation(x):
     """
     Return a normalized correlation matrix from a covariance matrix.
 
-    :param x (np.array): input covariance matrix.
-    :return (np.array): normalized correlation matrix with [1...] diagonal.
+    :param x: (np.array) input covariance matrix.
+    :return: (np.array) normalized correlation matrix with [1...] diagonal.
     """
 
     if np.any(np.isnan(x)):
@@ -58,14 +60,15 @@ def correlation(x):
         d = np.outer(np.diag(x), np.diag(x)) ** .5
         return np.where(d == 0, np.zeros_like(x), x / d)
 
+
 def solve_axatc(a, c):
     """
     Solves for X = A X A' + C
     See: http://math.stackexchange.com/questions/348487/solving-matrix-
         equations-of-the-form-x-axat-c
 
-    :param a (np.array): A matrix.
-    :param c (np.array): C matrix.
+    :param a: (np.array) A matrix.
+    :param c: (np.array) C matrix.
     :return: (np.array) X matrix.
     """
 
@@ -80,22 +83,24 @@ def solve_axatc(a, c):
 
     return evecs * x_tilde * evecs.getH()
 
+
 def smooth_phasors(x, magargs=None, phasorargs=None):
     """
     Smooth complex valued input by using separate smoothing kernels for
     magnitudes and phases. Smoothing on phases is done as smoothing on unit-
     length phasors.
 
-    :param x (np.array): input array
-    :param magargs (dict): arguments for smooth() on input magnitudes.
-    :param phasorargs (dict): arguments for smooth() on input unit phasors.
-    :return (np.array): smoothed data
+    :param x: (np.array) input array
+    :param magargs: (dict) arguments for smooth() on input magnitudes.
+    :param phasorargs: (dict) arguments for smooth() on input unit phasors.
+    :return: (np.array) smoothed data
     """
 
     return np.vectorize(complex)(
         smooth(abs(x), **magargs),
         np.angle(smooth(x / abs(x), **phasorargs))
     )
+
 
 def smooth(x, window='boxcar', p=0.5, q=0.5):
     """
@@ -107,11 +112,11 @@ def smooth(x, window='boxcar', p=0.5, q=0.5):
     Window size is determined by: q * len(x)**p
     Note that p and q should be less than 1 for the above criteria to hold.
 
-    :param x (np.array): timeseries data to smooth.
-    :param window (str): window to grab from scipy.signal.get_window()
-    :param p (float): linear scaling of window with length of x.
-    :param q (float): polynomial scaling of window with length of x.
-    :return (np.array): smoothed data
+    :param x: (np.array) timeseries data to smooth.
+    :param window: (str) window to grab from scipy.signal.get_window()
+    :param p: (float) linear scaling of window with length of x.
+    :param q: (float) polynomial scaling of window with length of x.
+    :return: (np.array) smoothed data
     """
 
     m = int(max(np.ceil((q * len(x))**p), 1))   # Window scale
@@ -129,6 +134,7 @@ def smooth(x, window='boxcar', p=0.5, q=0.5):
         return scipy.signal.convolve(s, win / sum(win), mode='valid')
     else:
         return scipy.signal.medfilt(x, (L,))
+
 
 def spectrum(series, **csdargs):
     """
@@ -164,6 +170,7 @@ def spectrum(series, **csdargs):
         sxy[i, j] = sxy[i, j] = spec[:, 0] / 2
 
     return freqs, sxy
+
 
 def eval_matrix(m):
     """

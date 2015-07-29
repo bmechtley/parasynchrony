@@ -27,10 +27,18 @@ class NumpyAwareJSONEncoder(json.JSONEncoder):
     """
 
     def default(self, obj):
+        """
+        Default fallback for JSON encoder.
+
+        :param obj: object to encode.
+        :return: encoded object.
+        """
+
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         else:
             return json.JSONEncoder.default(self, obj)
+
 
 def multipool(
         mapfun,
@@ -39,6 +47,18 @@ def multipool(
         timeout=99999,
         **pargs
 ):
+    """
+    Simple wrapper to multiprocessing.Pool.map_async to just use regular Python
+    map() when the desired number of processes is 1.
+
+    :param mapfun: (callable) Function to map.
+    :param mapdata: (list) List of parameter values onto which to map mapfun.
+    :param processes: (int) Number of processes to use.
+    :param timeout: (float) Maximum computation time for each process.
+    :param pargs: (dict) Other arguments to multiprocessing.Pool.map_async.
+    :return: (list) list of results of mapfun.
+    """
+
     if processes == 1:
         return map(mapfun, mapdata)
     else:
@@ -54,6 +74,19 @@ def imultipool(
         timeout=99999,
         **pargs
 ):
+    """
+    Same as multipool, but instead use itertools.imap and
+    multiprocessing.Pool.imap for lazy loading of parameter values.
+
+    :param mapfun: (callable) Function to map.
+    :param mapdataiter: (iterator) Iterator of parameter values onto which to
+        map mapfun.
+    :param processes: (int) Number of processes to use.
+    :param timeout: (float) Maximum computation time for each process.
+    :param pargs: (dict) Other arguments to multiprocessing.Pool.imap.
+    :return: (list) list of results of mapfun.
+    """
+
     if processes == 1:
         return itertools.imap(mapfun, mapdataiter)
     else:
@@ -63,6 +96,13 @@ def imultipool(
 
 
 def paramhash(params):
+    """
+    Create a unique hash for a bunch of parameter values.
+
+    :param params: (dict) dictionary of parameter: value pairs.
+    :return: (str) hash string.
+    """
+
     return hash(json.dumps(params, cls=NumpyAwareJSONEncoder))
 
 
@@ -71,9 +111,10 @@ def dict_merge(a, b):
     Merge two dictionaries, preferring the values from the second in case of
     collision.
 
-    :param a: first dictionary
-    :param b: second dictionary
-    :return: new dictionary containing keys and values from both dictionaries.
+    :param a: (dict) first dictionary
+    :param b: (dict) second dictionary
+    :return: (dict) new dictionary containing keys and values from both
+        dictionaries.
     """
 
     c = a.copy()
@@ -82,6 +123,16 @@ def dict_merge(a, b):
 
 
 def dict_split(d, keys):
+    """
+    Extract a list of keys into a new dictionary containing only those
+    key: value pairs and a dictionary not containing those keys.
+
+    :param d: (dict) original input dictionary
+    :param keys: (list) list of key names
+    :return: (dict, dict) two dictionaries. The first does not contain the split
+        keys, and the second only contains the split keys.
+    """
+
     return {
         k: v for k, v in d.iteritems() if k not in keys
     }, {
@@ -90,6 +141,14 @@ def dict_split(d, keys):
 
 
 def dict_unpack(d, keys):
+    """
+    Unpack a dictionary into a list of values given an ordering of keys.
+
+    :param d: (dict) dictionary to unpack
+    :param keys: (list) ordered list of keys
+    :return: (tuptel) tuple of parameter values, ordered according to keys.
+    """
+
     return tuple([d[k] for k in keys])
 
 
@@ -97,15 +156,16 @@ def decode_list(data):
     """
     Helper for opening JSON data with non-UTF-8 encoding. This recursively
     converts all elements in a list.
-    :param data: the list
-    :return: the list with all string elements encoded in UTF-8.
+
+    :param data: (list) the list
+    :return: (list) the list with all string elements encoded in UTF-8.
     """
 
     rv = []
 
     for item in data:
         if isinstance(item, unicode):
-            item = item.encode('utf-8')
+            item = item.encode()
         elif isinstance(item, list):
             item = decode_list(item)
         elif isinstance(item, dict):
@@ -120,17 +180,18 @@ def decode_dict(data):
     """
     Helper for opening JSON data with non-UTF-8 encoding. This recursively
     converts all elements in a dict.
-    :param data: the dict
-    :return: the dict with all string elements encoded in UTF-8.
+
+    :param data: (dict) the dict
+    :return: (dict) the dict with all string elements encoded in UTF-8.
     """
 
     rv = {}
 
     for key, value in data.iteritems():
         if isinstance(key, unicode):
-            key = key.encode('utf-8')
+            key = key.encode()
         if isinstance(value, unicode):
-            value = value.encode('utf-8')
+            value = value.encode()
         elif isinstance(value, list):
             value = decode_list(value)
         elif isinstance(value, dict):
@@ -143,9 +204,17 @@ def decode_dict(data):
 
 def zero_storage_arrays(config):
     """
+    Create a bunch of arrays of zeros for large marginal runs given a
+    configuration dict. See marginals.py or slices.py for more information on
+    how these config dictionariesare formatted.
 
-    :param config:
-    :return:
+    :param config: (dict) configuration dict.
+    :return: (dict) dictionary containing:
+        counts: (np.array) storage of histogram
+        maxima: (np.array) storage of maxima
+        samples: (np.array) storage of random samples
+        samplesleft: (np.array) storage of how many random samples are left
+            to compute
     """
 
     paramkeys = config['props']['paramkeys']
@@ -218,8 +287,15 @@ def zero_storage_arrays(config):
 
 
 def load_config(configfile):
+    """
+    Load a configuration JSON file using pybatchdict, decoding UTF-8.
+
+    :param configfile: (str) path to configuration file.
+    :return: (dict) configuration dictionary.
+    """
+
     config_json = json.load(
-        open(configfile, 'r'),
+        open(configfile),
         object_hook=decode_dict
     )
 
@@ -334,11 +410,8 @@ def norm_shape(shape):
     Normalize numpy array shapes so they're always expressed as a tuple, even
     for one-dimensional shapes.
 
-    Parameters
-        shape - an int, or a tuple of ints
-
-    Returns
-        a shape tuple
+    :param shape: (int or tuple of ints) shape to normalize.
+    :return: (tuple) normalized shape tuple.
     """
 
     try:
@@ -362,18 +435,15 @@ def sliding_window(a, ws, ss=None, flatten=True):
     """
     Return a sliding window over a in any number of dimensions
 
-    Parameters:
-        a  - an n-dimensional numpy array
-        ws - an int (a is 1D) or tuple (a is 2D or greater) representing the size
-             of each dimension of the window
-        ss - an int (a is 1D) or tuple (a is 2D or greater) representing the
-             amount to slide the window in each dimension. If not specified, it
-             defaults to ws.
-        flatten - if True, all slices are flattened, otherwise, there is an
-                  extra dimension for each dimension of the input.
-
-    Returns
-        an array containing each n-dimensional window from a
+    :param a: (np.array) an n-dimensional numpy array
+    :param ws: (int or tuple of ints) int or tuple of ints representing the size
+        of each dimension of the window.
+    :param ss: (int or tuple of ints) int or tuple of ints representing the
+        amount to slide the window in each dimension. If not specified, it
+        defaults to ws.
+    :param flatten: (bool) If True, all slices are flattened. Otherwise, there
+        is an extra dimension for each dimension of the input.
+    :return: (np.array) an array containing each n-dimensional window from a.
     """
 
     if ss is None:
@@ -411,8 +481,8 @@ def sliding_window(a, ws, ss=None, flatten=True):
     # dimension plus the shape of the window (tuple addition)
     newshape += norm_shape(ws)
 
-    # the strides tuple will be the array's strides multiplied by step size, plus
-    # the array's strides (tuple addition)
+    # the strides tuple will be the array's strides multiplied by step size,
+    # plus the array's strides (tuple addition)
     newstrides = norm_shape(np.array(a.strides) * ss) + a.strides
     strided = ast(a, shape=newshape, strides=newstrides)
 
