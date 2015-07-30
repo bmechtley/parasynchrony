@@ -25,6 +25,9 @@ def make_globals():
         symbol name and one mapping descriptive labels to each symbol name.
     """
 
+    # TODO: 3 patches have been hardcoded here. This should probably just be
+    # TODO:     independent of number of patches.
+
     return dict(
         a=sympy.Symbol('a', positive=True),
         r=sympy.Symbol('\lambda', positive=True),
@@ -215,6 +218,15 @@ def get_model(modelstr):
 
         # Ordinary difference equations to which migration matrix will be
         # applied.
+
+        # TODO: range(2) is maybe hard-coded number of patches? Change this so
+        # TODO:     that 3+ patches work.
+        # TODO:
+        # TODO:     >>> model = model.parasitism.get_model("nbd(3)")
+        # TODO:     ...
+        # TODO:         ] for i in range(2)
+        # TODO:     IndexError: list index out of range
+
         equations = sympy.Matrix([
             item for sublist in [
                 [
