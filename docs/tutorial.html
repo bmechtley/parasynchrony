@@ -173,10 +173,14 @@ div#notebook {
 
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[30]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<div class=" highlight hl-ipython2"><pre><span class="c"># Execute from parent directory.</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;../&#39;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">sympy</span>
 <span class="kn">import</span> <span class="nn">models</span>
 <span class="kn">import</span> <span class="nn">utilities</span>
@@ -199,7 +203,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">parasitism</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s">&quot;nbd(2)&quot;</span><span class="p">)</span> <span class="c"># Get a two-patch NBD model.</span>
@@ -231,7 +235,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">vars</span> <span class="c"># deterministic variables (host, parasitoid for each patch.)</span>
@@ -245,7 +249,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[16]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[3]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -264,7 +268,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">noises</span> <span class="c"># stochastic variables</span>
@@ -278,7 +282,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[18]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[4]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -297,7 +301,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">deterministic</span> <span class="c"># deterministic terms of the equation</span>
@@ -311,7 +315,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[19]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[5]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -330,7 +334,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[20]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">stochastic</span> <span class="c"># stochastic terms of the equation</span>
@@ -344,7 +348,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[20]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[6]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -363,7 +367,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">equilibrium</span>
@@ -377,7 +381,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[21]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[7]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -395,7 +399,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[23]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">A</span> <span class="c"># Deterministic Jacobian evaluated at the equilibrium point.</span>
@@ -409,7 +413,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[23]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[8]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -428,7 +432,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[24]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">B</span> <span class="c"># Stochastic Jacobian evaluated at the equilibrium point.</span>
@@ -442,7 +446,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[24]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[9]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -471,7 +475,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[34]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">mh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
@@ -521,7 +525,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[48]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">calculate_eigenvalues</span><span class="p">(</span><span class="n">sym_params</span><span class="p">)</span>
@@ -535,7 +539,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[48]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[11]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -562,31 +566,23 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h5 id="Covariance">Covariance<a class="anchor-link" href="#Covariance">&#182;</a></h5><p>There are two methods for calculating the model's covariance. One integrates the covariance from the analytic spectral matrix. The other is completely analytic and much faster.</p>
-
+<h5 id="Covariance">Covariance<a class="anchor-link" href="#Covariance">&#182;</a></h5>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[46]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="kn">import</span> <span class="nn">timeit</span>
 
 <span class="n">start_time</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
-<span class="n">cov1</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">integrate_covariance_from_analytic_spectrum</span><span class="p">(</span><span class="n">sym_params</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">nfreqs</span><span class="o">=</span><span class="mi">4096</span><span class="p">)</span>
-<span class="n">elapsed_1</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+<span class="n">cov</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_covariance</span><span class="p">(</span><span class="n">sym_params</span><span class="p">,</span> <span class="n">noise</span><span class="p">)</span>
+<span class="n">elapsed</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
 
-<span class="n">start_time</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
-<span class="n">cov2</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_covariance</span><span class="p">(</span><span class="n">sym_params</span><span class="p">,</span> <span class="n">noise</span><span class="p">)</span>
-<span class="n">elapsed_2</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
-
-<span class="k">print</span> <span class="s">&#39;</span><span class="si">%f</span><span class="s">s&#39;</span> <span class="o">%</span> <span class="n">elapsed_1</span>
-<span class="k">print</span> <span class="n">cov1</span>
-<span class="k">print</span>
-<span class="k">print</span> <span class="s">&#39;</span><span class="si">%f</span><span class="s">s&#39;</span> <span class="o">%</span> <span class="n">elapsed_2</span>
-<span class="k">print</span> <span class="n">cov2</span>
+<span class="k">print</span> <span class="s">&#39;</span><span class="si">%f</span><span class="s">s&#39;</span> <span class="o">%</span> <span class="n">elapsed</span>
+<span class="k">print</span> <span class="n">cov</span>
 </pre></div>
 
 </div>
@@ -599,13 +595,7 @@ div#notebook {
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>0.287349s
-[[ 14.60445527  11.85520339   7.93934652   6.93348083]
- [ 11.85520339  14.60445527   6.93348083   7.93934652]
- [  7.93934652   6.93348083   5.94084378   5.12252853]
- [  6.93348083   7.93934652   5.12252853   5.94084378]]
-
-0.000717s
+<pre>0.000570s
 [[ 14.60764234  11.85786537   4.09783558   3.65068681]
  [ 11.85786537  14.60764234   3.65068681   4.09783558]
  [  4.09783558   3.65068681   5.94208431   5.12363945]
@@ -629,7 +619,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[52]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="c"># Adjust v to change of input frequency at which to evaluate the spectral matrix (0 to 0.5)</span>
@@ -644,7 +634,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[52]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[19]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -673,19 +663,6 @@ div#notebook {
 
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython2"><pre> 
-</pre></div>
-
-</div>
-</div>
-</div>
-
 </div>
     </div>
   </div>
