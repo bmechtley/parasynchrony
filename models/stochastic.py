@@ -24,11 +24,11 @@ class StochasticModel:
         :param noises: list of SymPy symbols representing noise variables.
         :param equation: SymPy Matrix describing dynamics of the state
             variables. X_{t+1} = F(X_t)
-        :param allvars:
-        :param cachesize:
+        :param allvars: List of all the variables.
+        :param cachesize: Maximum number of evaluated matrices to cache.
         """
 
-        # TODO: Describe allvars, cachesize.
+        # TODO: Maybe allvars should be automatically populated?
 
         self.allvars = allvars
         self.vars = sympy.Matrix(symvars)
@@ -59,8 +59,8 @@ class StochasticModel:
         """Find the [first] non-trivial equilibrium point."""
 
         # TODO: This currently assumes there's one non-trivial equilibrium
-        # point and that it's the second returned by SymPy's solve().
-        # That's a dangerous assumption.
+        #   point and that it's the second returned by SymPy's solve().
+        #   That's a dangerous assumption.
 
         self.equilibrium = sympy.solve(
             sympy.Eq(self.vars, self.deterministic),
@@ -90,16 +90,20 @@ class StochasticModel:
         self.B = self.stochastic.jacobian(self.noises).subs(subs)
 
     def lambdify(self, var, key, params):
+        """
+        Convert the symbolic system equation into a regular Python lambda
+        expression for faster simulation speeds.
+
+        :param var: (str) Which variable we are evaluating with this expression.
+        :param key: (str) Key under which to  cache this lambda expression.
+        :param params: (dict) Model parameter set substitutions.
+        :return: (function) lambda expression that takes in a value for the
+            given model variable.
+        """
+
         # Make sure the keys in params are ordered as they are in allvars, so
         # that consecutive calls to cached lambdified matrices will have the
         # same argument ordering.
-        """
-
-        :param var:
-        :param key:
-        :param params:
-        :return:
-        """
 
         param_keys = [k for k in self.allvars if k in params]
         param_vals = [params[k] for k in param_keys]
@@ -203,6 +207,15 @@ class StochasticModel:
         return zpks
 
     def transfer_function(self, params):
+        """
+        Return the transfer function for the model given specific parameters as
+        a lambda expression.
+
+        :param params: (dict) dictionary of model parameters.
+        :return: (function) lambda z: evaluates the transfer function for some
+            complex value, z.
+        """
+
         cached = self.get_cached_matrices(params)
         a, b = cached['A'], cached['B']
 
@@ -222,11 +235,11 @@ class StochasticModel:
         cached = self.get_cached_matrices(params)
         a, b = cached['A'], cached['B']
 
-        # R(0) = M1 R(0) M1' + Q0 Sigma Q0'
+        # Sigma_X = A X A' + B Sigma_e B'
         if np.all(np.isfinite(a)) and np.all(np.isfinite(b)):
-            result = np.real(
-                utilities.solve_axatc(a, np.dot(np.dot(b, inputcov),  b.T))
-            )
+            result = scipy.linalg.solve_discrete_lyapunov(
+                a, np.dot(np.dot(b, inputcov), b.T)
+            ).reshape(a.shape)
         else:
             warnings.warn(' '.join([
                 'A and/or B matrix contained inf or NaN values. Returning NaN',
