@@ -201,7 +201,6 @@ def decode_dict(data):
 
     return rv
 
-
 def zero_storage_arrays(config):
     """
     Create a bunch of arrays of zeros for large marginal runs given a
@@ -217,14 +216,16 @@ def zero_storage_arrays(config):
             to compute
     """
 
+    # TODO: Which of these is actually used?? This or the one in marginals.py?
+
     paramkeys = config['props']['paramkeys']
     nparams = len(paramkeys)
     paramres, samplings = [config['args'][k] for k in 'resolution', 'samplings']
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
-    # returned in compute_metrics and have the structure of these histograms
-    # automatically change. Easy fix is to wait to create the matrices until we
-    # see the first dict of values returned.
+    # TODO:     returned in compute_metrics and have the structure of these
+    # TODO:     histograms automatically change. Easy fix is to wait to create
+    # TODO:     the matrices until we see the first dict of values returned.
     popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
 
     # Parameters that actually vary, their count, and their index within the
