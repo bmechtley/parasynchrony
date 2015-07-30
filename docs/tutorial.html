@@ -173,12 +173,14 @@ div#notebook {
 
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[23]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="c"># Execute from parent directory.</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;../&#39;</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">display</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">sympy</span>
@@ -205,7 +207,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[38]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">parasitism</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s">&quot;nbd(2)&quot;</span><span class="p">)</span> <span class="c"># Get a two-patch NBD model.</span>
@@ -222,7 +224,7 @@ div#notebook {
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>&lt;models.stochastic.StochasticModel instance at 0x10ac738c0&gt;
+<pre>&lt;models.stochastic.StochasticModel instance at 0x106f26cb0&gt;
 </pre>
 </div>
 </div>
@@ -252,7 +254,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[39]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">vars</span><span class="p">)</span>
@@ -274,7 +276,7 @@ div#notebook {
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[39]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[3]:</div>
 
 
 <div class="output_latex output_subarea output_execute_result">
@@ -289,7 +291,7 @@ $$\left[\begin{matrix}H^{{(1)}}\\H^{{(2)}}\\P^{{(1)}}\\P^{{(2)}}\end{matrix}\rig
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[40]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">noises</span><span class="p">)</span>
@@ -311,7 +313,7 @@ $$\left[\begin{matrix}H^{{(1)}}\\H^{{(2)}}\\P^{{(1)}}\\P^{{(2)}}\end{matrix}\rig
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[40]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[4]:</div>
 
 
 <div class="output_latex output_subarea output_execute_result">
@@ -326,7 +328,7 @@ $$\left[\begin{matrix}\epsilon^{{(1)}}_{h}\\\epsilon^{{(2)}}_{h}\\\epsilon^{{(1)
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[41]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">deterministic</span><span class="p">)</span>
@@ -348,7 +350,7 @@ $$\left[\begin{matrix}\epsilon^{{(1)}}_{h}\\\epsilon^{{(2)}}_{h}\\\epsilon^{{(1)
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[41]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[5]:</div>
 
 
 <div class="output_latex output_subarea output_execute_result">
@@ -363,7 +365,7 @@ $$\left[\begin{matrix}\frac{H^{{(1)}} \lambda \left(- \mu_{H} + 1\right)}{\left(
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[42]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">stochastic</span><span class="p">)</span>
@@ -385,7 +387,7 @@ $$\left[\begin{matrix}\frac{H^{{(1)}} \lambda \left(- \mu_{H} + 1\right)}{\left(
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[42]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[6]:</div>
 
 
 <div class="output_latex output_subarea output_execute_result">
@@ -400,7 +402,7 @@ $$\left[\begin{matrix}\frac{H^{{(1)}} \lambda \left(- \mu_{H} + 1\right) e^{\eps
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[43]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">equilibrium</span><span class="p">)</span>
@@ -422,7 +424,7 @@ $$\left[\begin{matrix}\frac{H^{{(1)}} \lambda \left(- \mu_{H} + 1\right) e^{\eps
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[43]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[7]:</div>
 
 
 <div class="output_latex output_subarea output_execute_result">
@@ -437,7 +439,7 @@ $$\left \{ H^{{(1)}} : - \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[36]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">A</span><span class="p">)</span>
@@ -459,7 +461,7 @@ $$\left \{ H^{{(1)}} : - \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[36]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[8]:</div>
 
 
 <div class="output_latex output_subarea output_execute_result">
@@ -474,7 +476,7 @@ $$\left[\begin{matrix}\frac{\lambda \left(- \mu_{H} + 1\right)}{\left(\frac{a}{k
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[37]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="p">)</span>
@@ -496,7 +498,7 @@ $$\left[\begin{matrix}\frac{\lambda \left(- \mu_{H} + 1\right)}{\left(\frac{a}{k
 </div>
 </div>
 
-<div class="output_area"><div class="prompt output_prompt">Out[37]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[9]:</div>
 
 
 <div class="output_latex output_subarea output_execute_result">
@@ -521,7 +523,7 @@ $$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \fr
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[44]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">mh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
@@ -532,6 +534,9 @@ $$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \fr
 
 <span class="c"># Converts text parameter names to sympy symbols.</span>
 <span class="n">sym_params</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">parasitism</span><span class="o">.</span><span class="n">sym_params</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> 
+
+<span class="n">display</span><span class="p">(</span><span class="s">&quot;A(params)&quot;</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">A</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">sym_params</span><span class="p">))</span>
+<span class="n">display</span><span class="p">(</span><span class="s">&quot;B(params)&quot;</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">subs</span><span class="p">(</span><span class="n">sym_params</span><span class="p">))</span>
 
 <span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">noise</span><span class="p">)</span>
 <span class="k">print</span> <span class="n">noise</span>
@@ -547,6 +552,42 @@ $$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \fr
 <div class="output_wrapper">
 <div class="output">
 
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_text output_subarea ">
+<pre>&apos;A(params)&apos;</pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_latex output_subarea ">
+$$\left[\begin{matrix}0.75 & 0.125 & -0.5625 & -0.09375\\0.125 & 0.75 & -0.09375 & -0.5625\\0.375 & 0.0625 & 0.28125 & 0.046875\\0.0625 & 0.375 & 0.046875 & 0.28125\end{matrix}\right]$$
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_text output_subarea ">
+<pre>&apos;B(params)&apos;</pre>
+</div>
+
+</div>
+
+<div class="output_area"><div class="prompt"></div>
+
+
+<div class="output_latex output_subarea ">
+$$\left[\begin{matrix}2.25 & 0.375 & 0 & 0\\0.375 & 2.25 & 0 & 0\\0 & 0 & 1.125 & 0.1875\\0 & 0 & 0.1875 & 1.125\end{matrix}\right]$$
+</div>
+
+</div>
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
@@ -577,7 +618,7 @@ $$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \fr
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[46]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">evals</span><span class="p">,</span> <span class="n">evecs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_eigenvalues</span><span class="p">(</span><span class="n">sym_params</span><span class="p">)</span>
@@ -630,7 +671,7 @@ $$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \fr
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[47]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="kn">import</span> <span class="nn">timeit</span>
@@ -654,7 +695,7 @@ $$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \fr
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>0.000611s
+<pre>0.000643s
 &lt;type &apos;numpy.ndarray&apos;&gt;
 [[ 14.60764234  11.85786537   4.09783558   3.65068681]
  [ 11.85786537  14.60764234   3.65068681   4.09783558]
@@ -679,7 +720,7 @@ $$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \fr
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[48]:</div>
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="c"># Adjust v to change of input frequency at which to evaluate the spectral matrix (0 to 0.5)</span>

@@ -1,7 +1,7 @@
 import unittest
 import sympy
 import numpy as np
-import scipy.linalg
+import utilities
 import models.stochastic
 
 
@@ -34,6 +34,8 @@ class TestStochasticMethods(unittest.TestCase):
         [(x[1] + x[2] + eps[1]) / 3, (x[1] + x[2] + eps[2]) / 3]
     )
 
+    nbd2 = models.parasitism.get_model('nbd(2)')
+
     def test_analytic_variance(self):
         # X_t = .5X_{t-1} + .5u, u ~ N(0, sigma_u)
         # sigma^2_x = (1/2)^2 sigma^2_x + (1/2)^2 sigma^2_u
@@ -47,6 +49,41 @@ class TestStochasticMethods(unittest.TestCase):
         analytic_var_2 = self.model2.calculate_covariance({}, [self.u_var2])
         self.assertTrue(np.allclose(
             analytic_var_2, np.array([[8./45, 11./90], [11./90, 8./45]])
+        ))
+
+        # 2-patch NBD. Quite complicated.
+        self.assertTrue(np.allclose(
+            self.nbd2.calculate_covariance(
+                models.parasitism.sym_params(
+                    dict(r=2.0, a=1.0, c=1.0, k=0.5, mh=0.25, mp=0.25)
+                ),
+                utilities.noise_cov(dict(SpSh=1, Chh=0.5, Cpp=0.5))
+            ), np.array([
+                [
+                    928315516107./63549989434,
+                    1507134437739./127099978868,
+                    130208704032./31774994717,
+                    116000554032./31774994717
+                ],
+                [
+                    1507134437739./127099978868,
+                    928315516107./63549989434,
+                    116000554032./31774994717,
+                    130208704032./31774994717
+                ],
+                [
+                    130208704032./31774994717,
+                    116000554032./31774994717,
+                    188809697688./31774994717,
+                    162803616588./31774994717
+                ],
+                [
+                    116000554032./31774994717,
+                    130208704032./31774994717,
+                    162803616588./31774994717,
+                    188809697688./31774994717
+                ]
+            ])
         ))
 
     def test_integrated_variance(self):
