@@ -173,7 +173,7 @@ div#notebook {
 
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[23]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="c"># Execute from parent directory.</span>
@@ -182,6 +182,8 @@ div#notebook {
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">sympy</span>
+<span class="n">sympy</span><span class="o">.</span><span class="n">init_printing</span><span class="p">()</span>
+
 <span class="kn">import</span> <span class="nn">models</span>
 <span class="kn">import</span> <span class="nn">utilities</span>
 </pre></div>
@@ -203,13 +205,28 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[38]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">parasitism</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s">&quot;nbd(2)&quot;</span><span class="p">)</span> <span class="c"># Get a two-patch NBD model.</span>
+<span class="k">print</span> <span class="n">model</span>
 </pre></div>
 
 </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;models.stochastic.StochasticModel instance at 0x10ac738c0&gt;
+</pre>
+</div>
+</div>
+
 </div>
 </div>
 
@@ -235,10 +252,11 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[39]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">vars</span> <span class="c"># deterministic variables (host, parasitoid for each patch.)</span>
+<div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">vars</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">vars</span> <span class="c"># deterministic variables (host, parasitoid for each patch.)</span>
 </pre></div>
 
 </div>
@@ -249,15 +267,18 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[3]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;class &apos;sympy.matrices.dense.MutableDenseMatrix&apos;&gt;
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[39]:</div>
 
 
-<div class="output_text output_subarea output_execute_result">
-<pre>Matrix([
-[H^{(1)}],
-[H^{(2)}],
-[P^{(1)}],
-[P^{(2)}]])</pre>
+<div class="output_latex output_subarea output_execute_result">
+$$\left[\begin{matrix}H^{{(1)}}\\H^{{(2)}}\\P^{{(1)}}\\P^{{(2)}}\end{matrix}\right]$$
 </div>
 
 </div>
@@ -268,10 +289,11 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[40]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">noises</span> <span class="c"># stochastic variables</span>
+<div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">noises</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">noises</span> <span class="c"># stochastic variables</span>
 </pre></div>
 
 </div>
@@ -282,15 +304,18 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[4]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;class &apos;sympy.matrices.dense.MutableDenseMatrix&apos;&gt;
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[40]:</div>
 
 
-<div class="output_text output_subarea output_execute_result">
-<pre>Matrix([
-[\epsilon^{(1)}_h],
-[\epsilon^{(2)}_h],
-[\epsilon^{(1)}_p],
-[\epsilon^{(2)}_p]])</pre>
+<div class="output_latex output_subarea output_execute_result">
+$$\left[\begin{matrix}\epsilon^{{(1)}}_{h}\\\epsilon^{{(2)}}_{h}\\\epsilon^{{(1)}}_{p}\\\epsilon^{{(2)}}_{p}\end{matrix}\right]$$
 </div>
 
 </div>
@@ -301,10 +326,11 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[41]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">deterministic</span> <span class="c"># deterministic terms of the equation</span>
+<div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">deterministic</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">deterministic</span> <span class="c"># deterministic terms of the equation</span>
 </pre></div>
 
 </div>
@@ -315,15 +341,18 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[5]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;class &apos;sympy.matrices.dense.MutableDenseMatrix&apos;&gt;
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[41]:</div>
 
 
-<div class="output_text output_subarea output_execute_result">
-<pre>Matrix([
-[H^{(1)}*\lambda*(-\mu_H + 1)*(P^{(1)}*a/k + 1)**(-k) + H^{(2)}*\lambda*\mu_H*(P^{(2)}*a/k + 1)**(-k)/2],
-[H^{(1)}*\lambda*\mu_H*(P^{(1)}*a/k + 1)**(-k)/2 + H^{(2)}*\lambda*(-\mu_H + 1)*(P^{(2)}*a/k + 1)**(-k)],
-[H^{(1)}*c*(1 - (P^{(1)}*a/k + 1)**(-k))*(-\mu_P + 1) + H^{(2)}*\mu_P*c*(1 - (P^{(2)}*a/k + 1)**(-k))/2],
-[H^{(1)}*\mu_P*c*(1 - (P^{(1)}*a/k + 1)**(-k))/2 + H^{(2)}*c*(1 - (P^{(2)}*a/k + 1)**(-k))*(-\mu_P + 1)]])</pre>
+<div class="output_latex output_subarea output_execute_result">
+$$\left[\begin{matrix}\frac{H^{{(1)}} \lambda \left(- \mu_{H} + 1\right)}{\left(\frac{P^{{(1)}} a}{k} + 1\right)^{k}} + \frac{H^{{(2)}} \lambda \mu_{H}}{2 \left(\frac{P^{{(2)}} a}{k} + 1\right)^{k}}\\\frac{H^{{(1)}} \lambda \mu_{H}}{2 \left(\frac{P^{{(1)}} a}{k} + 1\right)^{k}} + \frac{H^{{(2)}} \lambda \left(- \mu_{H} + 1\right)}{\left(\frac{P^{{(2)}} a}{k} + 1\right)^{k}}\\H^{{(1)}} c \left(1 - \left(\frac{P^{{(1)}} a}{k} + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right) + \frac{H^{{(2)}} \mu_{P}}{2} c \left(1 - \left(\frac{P^{{(2)}} a}{k} + 1\right)^{- k}\right)\\\frac{H^{{(1)}} \mu_{P}}{2} c \left(1 - \left(\frac{P^{{(1)}} a}{k} + 1\right)^{- k}\right) + H^{{(2)}} c \left(1 - \left(\frac{P^{{(2)}} a}{k} + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right)\end{matrix}\right]$$
 </div>
 
 </div>
@@ -334,10 +363,11 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[42]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">stochastic</span> <span class="c"># stochastic terms of the equation</span>
+<div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">stochastic</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">stochastic</span> <span class="c"># stochastic terms of the equation</span>
 </pre></div>
 
 </div>
@@ -348,15 +378,18 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[6]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;class &apos;sympy.matrices.dense.MutableDenseMatrix&apos;&gt;
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[42]:</div>
 
 
-<div class="output_text output_subarea output_execute_result">
-<pre>Matrix([
-[H^{(1)}*\lambda*(-\mu_H + 1)*(P^{(1)}*a/k + 1)**(-k)*exp(\epsilon^{(1)}_h) + H^{(2)}*\lambda*\mu_H*(P^{(2)}*a/k + 1)**(-k)*exp(\epsilon^{(2)}_h)/2],
-[H^{(1)}*\lambda*\mu_H*(P^{(1)}*a/k + 1)**(-k)*exp(\epsilon^{(1)}_h)/2 + H^{(2)}*\lambda*(-\mu_H + 1)*(P^{(2)}*a/k + 1)**(-k)*exp(\epsilon^{(2)}_h)],
-[H^{(1)}*c*(1 - (P^{(1)}*a/k + 1)**(-k))*(-\mu_P + 1)*exp(\epsilon^{(1)}_p) + H^{(2)}*\mu_P*c*(1 - (P^{(2)}*a/k + 1)**(-k))*exp(\epsilon^{(2)}_p)/2],
-[H^{(1)}*\mu_P*c*(1 - (P^{(1)}*a/k + 1)**(-k))*exp(\epsilon^{(1)}_p)/2 + H^{(2)}*c*(1 - (P^{(2)}*a/k + 1)**(-k))*(-\mu_P + 1)*exp(\epsilon^{(2)}_p)]])</pre>
+<div class="output_latex output_subarea output_execute_result">
+$$\left[\begin{matrix}\frac{H^{{(1)}} \lambda \left(- \mu_{H} + 1\right) e^{\epsilon^{{(1)}}_{h}}}{\left(\frac{P^{{(1)}} a}{k} + 1\right)^{k}} + \frac{H^{{(2)}} \lambda \mu_{H} e^{\epsilon^{{(2)}}_{h}}}{2 \left(\frac{P^{{(2)}} a}{k} + 1\right)^{k}}\\\frac{H^{{(1)}} \lambda \mu_{H} e^{\epsilon^{{(1)}}_{h}}}{2 \left(\frac{P^{{(1)}} a}{k} + 1\right)^{k}} + \frac{H^{{(2)}} \lambda \left(- \mu_{H} + 1\right) e^{\epsilon^{{(2)}}_{h}}}{\left(\frac{P^{{(2)}} a}{k} + 1\right)^{k}}\\H^{{(1)}} c \left(1 - \left(\frac{P^{{(1)}} a}{k} + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right) e^{\epsilon^{{(1)}}_{p}} + \frac{H^{{(2)}} \mu_{P}}{2} c \left(1 - \left(\frac{P^{{(2)}} a}{k} + 1\right)^{- k}\right) e^{\epsilon^{{(2)}}_{p}}\\\frac{H^{{(1)}} \mu_{P}}{2} c \left(1 - \left(\frac{P^{{(1)}} a}{k} + 1\right)^{- k}\right) e^{\epsilon^{{(1)}}_{p}} + H^{{(2)}} c \left(1 - \left(\frac{P^{{(2)}} a}{k} + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right) e^{\epsilon^{{(2)}}_{p}}\end{matrix}\right]$$
 </div>
 
 </div>
@@ -367,10 +400,11 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[43]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">equilibrium</span>
+<div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">equilibrium</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">equilibrium</span>
 </pre></div>
 
 </div>
@@ -381,14 +415,18 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[7]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;type &apos;dict&apos;&gt;
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[43]:</div>
 
 
-<div class="output_text output_subarea output_execute_result">
-<pre>{H^{(2)}: -k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k),
- P^{(2)}: -k/a + (\lambda*k**k)**(1/k)/a,
- P^{(1)}: -k/a + (\lambda*k**k)**(1/k)/a,
- H^{(1)}: -k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k)}</pre>
+<div class="output_latex output_subarea output_execute_result">
+$$\left \{ H^{{(1)}} : - \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}, \quad H^{{(2)}} : - \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}, \quad P^{{(1)}} : - \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}, \quad P^{{(2)}} : - \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right \}$$
 </div>
 
 </div>
@@ -399,10 +437,11 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[36]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">A</span> <span class="c"># Deterministic Jacobian evaluated at the equilibrium point.</span>
+<div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">A</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">A</span> <span class="c"># Deterministic Jacobian evaluated at the equilibrium point.</span>
 </pre></div>
 
 </div>
@@ -413,15 +452,18 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[8]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;class &apos;sympy.matrices.dense.MutableDenseMatrix&apos;&gt;
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[36]:</div>
 
 
-<div class="output_text output_subarea output_execute_result">
-<pre>Matrix([
-[\lambda*(-\mu_H + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k),      \lambda*\mu_H*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)/2, -\lambda*a*(-\mu_H + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1),    -\lambda*\mu_H*a*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(2*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1))],
-[     \lambda*\mu_H*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)/2, \lambda*(-\mu_H + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k),    -\lambda*\mu_H*a*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(2*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)), -\lambda*a*(-\mu_H + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)],
-[c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))*(-\mu_P + 1),      \mu_P*c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))/2,        a*c*(-\mu_P + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1),           \mu_P*a*c*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(2*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1))],
-[     \mu_P*c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))/2, c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))*(-\mu_P + 1),           \mu_P*a*c*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(2*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)),        a*c*(-\mu_P + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)]])</pre>
+<div class="output_latex output_subarea output_execute_result">
+$$\left[\begin{matrix}\frac{\lambda \left(- \mu_{H} + 1\right)}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} & \frac{\lambda \mu_{H}}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} & - \frac{\lambda a}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \mu_{H} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & - \frac{\lambda \mu_{H} a \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}}\\\frac{\lambda \mu_{H}}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} & \frac{\lambda \left(- \mu_{H} + 1\right)}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} & - \frac{\lambda \mu_{H} a \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} & - \frac{\lambda a}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \mu_{H} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)\\c \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right) & \frac{\mu_{P} c}{2} \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) & \frac{a c}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \mu_{P} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & \frac{\mu_{P} a c \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}}\\\frac{\mu_{P} c}{2} \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) & c \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right) & \frac{\mu_{P} a c \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} & \frac{a c}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right) \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \mu_{P} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)\end{matrix}\right]$$
 </div>
 
 </div>
@@ -432,10 +474,11 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[37]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">B</span> <span class="c"># Stochastic Jacobian evaluated at the equilibrium point.</span>
+<div class=" highlight hl-ipython2"><pre><span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">B</span> <span class="c"># Stochastic Jacobian evaluated at the equilibrium point.</span>
 </pre></div>
 
 </div>
@@ -446,15 +489,18 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[9]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;class &apos;sympy.matrices.dense.MutableDenseMatrix&apos;&gt;
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[37]:</div>
 
 
-<div class="output_text output_subarea output_execute_result">
-<pre>Matrix([
-[\lambda*(-\mu_H + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k)),      \lambda*\mu_H*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/2,                                                                                                                                                                                                                                                                    0,                                                                                                                                                                                                                                                                    0],
-[     \lambda*\mu_H*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/2, \lambda*(-\mu_H + 1)*(a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k)),                                                                                                                                                                                                                                                                    0,                                                                                                                                                                                                                                                                    0],
-[                                                                                                                                                                                                                                                                   0,                                                                                                                                                                                                                                                                    0, c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))*(-\mu_P + 1)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k)),      \mu_P*c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/2],
-[                                                                                                                                                                                                                                                                   0,                                                                                                                                                                                                                                                                    0,      \mu_P*c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))/2, c*(1 - (a*(-k/a + (\lambda*k**k)**(1/k)/a)/k + 1)**(-k))*(-\mu_P + 1)*(-k*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k) + (\lambda*k**k)**(1/k)*(a*(\lambda*k**k)**(1/k))**k/(-a*a**k*c*k**k + a*c*(a*(\lambda*k**k)**(1/k))**k))]])</pre>
+<div class="output_latex output_subarea output_execute_result">
+$$\left[\begin{matrix}\frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \mu_{H} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & \frac{\lambda \mu_{H}}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & 0 & 0\\\frac{\lambda \mu_{H}}{2 \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & \frac{\lambda}{\left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{k}} \left(- \mu_{H} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & 0 & 0\\0 & 0 & c \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & \frac{\mu_{P} c}{2} \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)\\0 & 0 & \frac{\mu_{P} c}{2} \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right) & c \left(1 - \left(\frac{a}{k} \left(- \frac{k}{a} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}}}{a}\right) + 1\right)^{- k}\right) \left(- \mu_{P} + 1\right) \left(- \frac{k \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}} + \frac{\left(\lambda k^{k}\right)^{\frac{1}{k}} \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}{- a a^{k} c k^{k} + a c \left(a \left(\lambda k^{k}\right)^{\frac{1}{k}}\right)^{k}}\right)\end{matrix}\right]$$
 </div>
 
 </div>
@@ -475,7 +521,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[44]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">mh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
@@ -487,7 +533,10 @@ div#notebook {
 <span class="c"># Converts text parameter names to sympy symbols.</span>
 <span class="n">sym_params</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">parasitism</span><span class="o">.</span><span class="n">sym_params</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> 
 
+<span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">noise</span><span class="p">)</span>
 <span class="k">print</span> <span class="n">noise</span>
+<span class="k">print</span>
+<span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">sym_params</span><span class="p">)</span>
 <span class="k">print</span> <span class="n">sym_params</span>
 </pre></div>
 
@@ -501,10 +550,13 @@ div#notebook {
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>[[ 1.   0.5  0.   0. ]
+<pre>&lt;type &apos;numpy.ndarray&apos;&gt;
+[[ 1.   0.5  0.   0. ]
  [ 0.5  1.   0.   0. ]
  [ 0.   0.   1.   0.5]
  [ 0.   0.   0.5  1. ]]
+
+&lt;type &apos;dict&apos;&gt;
 {\mu_P: 0.25, a: 1.0, \mu_H: 0.25, c: 1.0, k: 0.5, \lambda: 2.0}
 </pre>
 </div>
@@ -525,10 +577,15 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[46]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">model</span><span class="o">.</span><span class="n">calculate_eigenvalues</span><span class="p">(</span><span class="n">sym_params</span><span class="p">)</span>
+<div class=" highlight hl-ipython2"><pre><span class="n">evals</span><span class="p">,</span> <span class="n">evecs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_eigenvalues</span><span class="p">(</span><span class="n">sym_params</span><span class="p">)</span>
+<span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">evals</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">evals</span>
+<span class="k">print</span>
+<span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">evecs</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">evecs</span>
 </pre></div>
 
 </div>
@@ -539,22 +596,23 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[11]:</div>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;type &apos;numpy.ndarray&apos;&gt;
+[ 0.6015625+0.46080507j  0.6015625-0.46080507j  0.4296875+0.32914648j
+  0.4296875-0.32914648j]
 
-
-<div class="output_text output_subarea output_execute_result">
-<pre>(array([ 0.6015625+0.46080507j,  0.6015625-0.46080507j,
-         0.4296875+0.32914648j,  0.4296875-0.32914648j]),
- array([[ 0.54772256 +0.00000000e+00j,  0.54772256 -0.00000000e+00j,
-         -0.54772256 +0.00000000e+00j, -0.54772256 -0.00000000e+00j],
-        [ 0.54772256 +6.38378239e-16j,  0.54772256 -6.38378239e-16j,
-          0.54772256 +8.60422844e-16j,  0.54772256 -8.60422844e-16j],
-        [ 0.22821773 -3.84599359e-01j,  0.22821773 +3.84599359e-01j,
-         -0.22821773 +3.84599359e-01j, -0.22821773 -3.84599359e-01j],
-        [ 0.22821773 -3.84599359e-01j,  0.22821773 +3.84599359e-01j,
-          0.22821773 -3.84599359e-01j,  0.22821773 +3.84599359e-01j]]))</pre>
+&lt;type &apos;numpy.ndarray&apos;&gt;
+[[ 0.54772256 +0.00000000e+00j  0.54772256 -0.00000000e+00j
+  -0.54772256 +0.00000000e+00j -0.54772256 -0.00000000e+00j]
+ [ 0.54772256 +6.38378239e-16j  0.54772256 -6.38378239e-16j
+   0.54772256 +8.60422844e-16j  0.54772256 -8.60422844e-16j]
+ [ 0.22821773 -3.84599359e-01j  0.22821773 +3.84599359e-01j
+  -0.22821773 +3.84599359e-01j -0.22821773 -3.84599359e-01j]
+ [ 0.22821773 -3.84599359e-01j  0.22821773 +3.84599359e-01j
+   0.22821773 -3.84599359e-01j  0.22821773 +3.84599359e-01j]]
+</pre>
 </div>
-
 </div>
 
 </div>
@@ -572,7 +630,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[47]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="kn">import</span> <span class="nn">timeit</span>
@@ -582,6 +640,7 @@ div#notebook {
 <span class="n">elapsed</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
 
 <span class="k">print</span> <span class="s">&#39;</span><span class="si">%f</span><span class="s">s&#39;</span> <span class="o">%</span> <span class="n">elapsed</span>
+<span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
 <span class="k">print</span> <span class="n">cov</span>
 </pre></div>
 
@@ -595,7 +654,8 @@ div#notebook {
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>0.000570s
+<pre>0.000611s
+&lt;type &apos;numpy.ndarray&apos;&gt;
 [[ 14.60764234  11.85786537   4.09783558   3.65068681]
  [ 11.85786537  14.60764234   3.65068681   4.09783558]
  [  4.09783558   3.65068681   5.94208431   5.12363945]
@@ -619,11 +679,13 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[48]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="c"># Adjust v to change of input frequency at which to evaluate the spectral matrix (0 to 0.5)</span>
-<span class="n">model</span><span class="o">.</span><span class="n">calculate_spectrum</span><span class="p">(</span><span class="n">sym_params</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">spectrum</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_spectrum</span><span class="p">(</span><span class="n">sym_params</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="k">print</span> <span class="nb">type</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">spectrum</span>
 </pre></div>
 
 </div>
@@ -634,20 +696,15 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[19]:</div>
-
-
-<div class="output_text output_subarea output_execute_result">
-<pre>array([[ 23.97826365+0.j,  17.98392472+0.j,  11.17457108+0.j,
-          9.34842061+0.j],
-       [ 17.98392472+0.j,  23.97826365+0.j,   9.34842061+0.j,
-         11.17457108+0.j],
-       [ 11.17457108+0.j,   9.34842061+0.j,   7.95053105+0.j,
-          6.70874873+0.j],
-       [  9.34842061+0.j,  11.17457108+0.j,   6.70874873+0.j,
-          7.95053105+0.j]])</pre>
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>&lt;type &apos;numpy.ndarray&apos;&gt;
+[[ 23.97826365+0.j  17.98392472+0.j  11.17457108+0.j   9.34842061+0.j]
+ [ 17.98392472+0.j  23.97826365+0.j   9.34842061+0.j  11.17457108+0.j]
+ [ 11.17457108+0.j   9.34842061+0.j   7.95053105+0.j   6.70874873+0.j]
+ [  9.34842061+0.j  11.17457108+0.j   6.70874873+0.j   7.95053105+0.j]]
+</pre>
 </div>
-
 </div>
 
 </div>
