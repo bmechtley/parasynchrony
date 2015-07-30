@@ -1,6 +1,7 @@
 import unittest
 import sympy
 import numpy as np
+import scipy.linalg
 import models.stochastic
 
 
@@ -49,29 +50,20 @@ class TestStochasticMethods(unittest.TestCase):
         ))
 
     def test_integrated_variance(self):
-        # TODO: I need to test more complicated models to make sure these equal.
-        # TODO:     Currently, I haven't really validated that the eigen-
-        # TODO:     decomposition code actually works for all models . . .
-
         integrated_vars_1 = [
             self.model.integrate_covariance_from_analytic_spectrum(
                 {}, [self.u_var], n**2
             ) for n in range(1, 16)
         ]
-
         # First, make sure this is monotonically converging.
         self.assertTrue(monotonic_convergence(integrated_vars_1))
 
-        # Second, make sure it's reasonably close to the analytic result.
-        # TODO: This "tolerance" value is totally arbitrary.
-        analytic_var_1 = self.model.calculate_covariance({}, [self.u_var])
-        diff_1 = np.abs(integrated_vars_1[-1] - analytic_var_1)
-        tolerance = 2 ** 43
-        self.assertTrue(diff_1 <= np.finfo(diff_1.dtype).eps * tolerance)
+        # TODO: Test if this is reasonable close to the analytic result or if
+        #   it appears to be converging toward it.
 
     def test_simulated_variance(self):
         # TODO: Stub. Need to find a suitable way to test accuracy /
-        # TODO:     convergence of covariance of random simulations.
+        #   convergence of covariance of random simulations.
         pass
 
     def test_correlation(self):
