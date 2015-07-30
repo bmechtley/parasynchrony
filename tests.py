@@ -49,6 +49,10 @@ class TestStochasticMethods(unittest.TestCase):
         ))
 
     def test_integrated_variance(self):
+        # TODO: I need to test more complicated models to make sure these equal.
+        # TODO:     Currently, I haven't really validated that the eigen-
+        # TODO:     decomposition code actually works for all models . . .
+
         integrated_vars_1 = [
             self.model.integrate_covariance_from_analytic_spectrum(
                 {}, [self.u_var], n**2
