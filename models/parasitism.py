@@ -26,7 +26,7 @@ def make_globals():
     """
 
     # TODO: 3 patches have been hardcoded here. This should probably just be
-    # TODO:     independent of number of patches.
+    #   independent of number of patches.
 
     return dict(
         a=sympy.Symbol('a', positive=True),
@@ -194,11 +194,10 @@ def get_model(modelstr):
         # in the off diagonals such that hosts only migrate to other hosts
         # and parasitoids only migrate to other parasitoids.
 
-        # TODO: This will NOT work, e.g. with AR1 or any non host-
-        # TODO:     parasitoid model or multispecies model. Only for models
-        # TODO:     where there are one host and one parasitoid per patch,
-        # TODO:     and hosts precede parasitoids in the list of state
-        # TODO:     variables.
+        # TODO: This will NOT work, e.g. with AR1 or any non host-parasitoid
+        #   model or multispecies model. Only for models where there are one
+        #   host and one parasitoid per patch, and hosts precede parasitoids in
+        #   the list of state variables.
 
         migrationmat = sympy.zeros(npatches * 2)
 
@@ -220,12 +219,12 @@ def get_model(modelstr):
         # applied.
 
         # TODO: range(2) is maybe hard-coded number of patches? Change this so
-        # TODO:     that 3+ patches work.
-        # TODO:
-        # TODO:     >>> model = model.parasitism.get_model("nbd(3)")
-        # TODO:     ...
-        # TODO:         ] for i in range(2)
-        # TODO:     IndexError: list index out of range
+        #   that 3+ patches work.
+        #
+        #   >>> model = model.parasitism.get_model("nbd(3)")
+        #       ...
+        #       ] for i in range(2)
+        #   IndexError: list index out of range
 
         equations = sympy.Matrix([
             item for sublist in [
