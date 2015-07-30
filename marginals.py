@@ -112,9 +112,9 @@ def zero_storage_arrays(config):
     paramres, samplings = [config['args'][k] for k in 'resolution', 'samplings']
 
     # TODO: This is messy. Ideally, I'd be able to change which metrics are
-    # returned in compute_metrics and have the structure of these histograms
-    # automatically change. Easy fix is to wait to create the matrices until we
-    # see the first dict of values returned.
+    #   returned in compute_metrics and have the structure of these histograms
+    #   automatically change. Easy fix is to wait to create the matrices until
+    #   we see the first dict of values returned.
     popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
 
     # Parameters that actually vary, their count, and their index within the
@@ -293,8 +293,9 @@ def run_slice(config, start, stop):
 
                 # Record the maximum value and its respective parameters for
                 # each marginal.
+
                 # TODO: Are the number of dimensions equal to the number of
-                # TODO:     varkeys or the total number of parameters?
+                #   varkeys or the total number of parameters?
                 if metric > ind_maxima[vkis + vkargis + (-1,)]:
                     ind_maxima[vkis + vkargis] = [
                         paramset[pk] for pk in paramkeys
