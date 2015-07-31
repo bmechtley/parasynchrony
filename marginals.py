@@ -478,22 +478,37 @@ def manage_runs(config):
         waiting = glob.glob('%s-*-waiting.txt' % cacheprefix)
 
         if len(waiting):
-            # Wait for another job to finish writing first.
-            writing = glob.glob('%s-*-writing.txt' % cacheprefix)
-            ready = glob.glob('%s-*-ready.txt' % cacheprefix)
+            out_str = '\t%d / %d:' % (len(completed) + 1, nruns)
 
-            while len(writing) or len(ready):
-                time.sleep(sleep_time)
+            # Wait for another job to finish writing first.
+            reported = False
+
+            while True:
+                writing = glob.glob('%s-*-writing.txt' % cacheprefix)
+                ready = glob.glob('%s-*-ready.txt' % cacheprefix)
+
+                if len(writing) or len(ready):
+                    if not reported:
+                        if len(writing):
+                            print out_str, "Waiting for %s." % writing[0]
+
+                        if len(ready):
+                            print out_str, "Waiting for %s." % ready[0]
+
+                        reported = True
+
+                    time.sleep(sleep_time)
+                else:
+                    break
 
             # Tell our job it can write.
             base_name = waiting[0].split('-waiting')[0]
             run_fn = base_name + '-ready.txt'
             open(run_fn, 'a').close()
-            os.remove(waiting[0])
+            print out_str, 'Wrote %s.' % run_fn
 
-            print '\t%d / %d: Letting %s write.' % (
-                len(completed), nruns, base_name
-            )
+            os.remove(waiting[0])
+            print out_str, 'Removed %s.\n'
 
             completed.add(base_name)
         else:
