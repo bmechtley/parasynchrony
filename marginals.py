@@ -508,7 +508,7 @@ def manage_runs(config):
             print out_str, 'Wrote %s.' % run_fn
 
             os.remove(waiting[0])
-            print out_str, 'Removed %s.\n'
+            print out_str, 'Removed %s.\n' % waiting[0]
 
             completed.add(base_name)
         else:
