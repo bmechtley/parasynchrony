@@ -490,6 +490,10 @@ def manage_runs(config):
             run_fn = base_name + '-run.txt'
             open(run_fn, 'a').close()
 
+            print '\t%d / %d: Letting %s write.' % (
+                base_name, len(completed), nruns
+            )
+
             completed.add(base_name)
         else:
             # Wait for something to be waiting to write.
