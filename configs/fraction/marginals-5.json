@@ -2,7 +2,7 @@
   "file": {
     "slice_size": 100,
     "qsub_walltime": "1:00:00",
-    "wait_interval": 5
+    "wait_interval": 2
   },
   "args": {
     "resolution": 5,
