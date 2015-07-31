@@ -311,7 +311,7 @@ def run_slice(config, start, stop):
 
     iostate_fns = {
         state: '%s-%d-%d-%s.txt' % (path_base, start, stop, state)
-        for state in ['waiting', 'writing', 'run']
+        for state in ['waiting', 'writing', 'ready']
     }
 
     # Tell the IO manager that we are waiting to write to disk.
@@ -321,9 +321,8 @@ def run_slice(config, start, stop):
 
     # TODO: Write io manager process.
     while True:
-        if os.path.exists(iostate_fns['run']):
+        if os.path.exists(iostate_fns['ready']):
             open(iostate_fns['writing'], 'a').close()
-            os.remove(iostate_fns['waiting'])
 
             pickle_fn = '%s-data.pickle' % path_base
 
@@ -383,7 +382,7 @@ def run_slice(config, start, stop):
                             )
 
             cPickle.dump(aggdata, open(pickle_fn, 'w'))
-            os.remove(iostate_fns['run'])
+            os.remove(iostate_fns['ready'])
             os.remove(iostate_fns['writing'])
 
         time.sleep(sleep_time)
@@ -481,14 +480,16 @@ def manage_runs(config):
         if len(waiting):
             # Wait for another job to finish writing first.
             writing = glob.glob('%s-*-writing.txt' % cacheprefix)
+            ready = glob.glob('%s-*-ready.txt' % cacheprefix)
 
-            while len(writing):
+            while len(writing) or len(ready):
                 time.sleep(sleep_time)
 
             # Tell our job it can write.
             base_name = waiting[0].split('-waiting')[0]
-            run_fn = base_name + '-run.txt'
+            run_fn = base_name + '-ready.txt'
             open(run_fn, 'a').close()
+            os.remove(waiting[0])
 
             print '\t%d / %d: Letting %s write.' % (
                 len(completed), nruns, base_name
