@@ -212,7 +212,7 @@ def run_slice(config, start, stop):
         print 'No manager file indicates I/O manager is not running. Quitting.'
         return
 
-    print 'Running: (%d, %d)' % start, stop
+    print 'Running: (%d, %d)' % (start, stop)
     bt = time.clock()
 
     # All possible combinations of varying parameters. Values are the index of
