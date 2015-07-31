@@ -351,7 +351,9 @@ def run_slice(config, start, stop):
         print '\tLoading existing %s.' % pickle_fn
 
         # Add this run's data to the existing aggregate data.
-        aggdata = cPickle.load(open(pickle_fn, 'w'))
+        input = open(pickle_fn)
+        aggdata = cPickle.load(input)
+        input.close()
 
         # Set these every time even though we only need to do so once.
         for sampkey in samplings.keys():
@@ -391,7 +393,9 @@ def run_slice(config, start, stop):
                     )
 
     print '\tWriting to %s.' % pickle_fn
-    cPickle.dump(aggdata, open(pickle_fn, 'w'))
+    output = open(pickle_fn, 'w')
+    cPickle.dump(aggdata, output)
+    output.close()
 
     print '\tRemoving %s.' % iostate_fns['writing']
     os.remove(iostate_fns['writing'])
