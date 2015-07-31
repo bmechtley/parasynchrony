@@ -351,7 +351,7 @@ def run_slice(config, start, stop):
         print '\tLoading existing %s.' % pickle_fn
 
         # Add this run's data to the existing aggregate data.
-        aggdata = cPickle.load(open(pickle_fn, 'a'))
+        aggdata = cPickle.load(open(pickle_fn, 'w'))
 
         # Set these every time even though we only need to do so once.
         for sampkey in samplings.keys():
