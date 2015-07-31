@@ -207,11 +207,19 @@ def run_slice(config, start, stop):
     """
 
     path_base = os.path.join(config['file']['dir'], config['file']['name'])
+    pickle_fn = '%s-data.pickle' % path_base
+
+    iostate_fns = {
+        state: '%s-%d-%d-%s.txt' % (path_base, start, stop, state)
+        for state in ['waiting', 'writing', 'ready', 'running']
+    }
 
     if not os.path.exists(path_base + '-manager.txt'):
         print 'No manager file indicates I/O manager is not running. Quitting.'
         return
 
+    # Report state as "running."
+    open(iostate_fns['running'], 'a').close()
     print 'Running: (%d, %d)' % (start, stop)
     bt = time.clock()
 
@@ -309,10 +317,7 @@ def run_slice(config, start, stop):
                 if np.isfinite(binindex):
                     ind_counts[vkis + vkargis + (binindex,)] += 1
 
-    iostate_fns = {
-        state: '%s-%d-%d-%s.txt' % (path_base, start, stop, state)
-        for state in ['waiting', 'writing', 'ready']
-    }
+    os.remove(iostate_fns['running'])
 
     # Tell the IO manager that we are waiting to write to disk.
     open(iostate_fns['waiting'], 'a').close()
@@ -328,8 +333,6 @@ def run_slice(config, start, stop):
 
     print '\tRemoving %s.' % iostate_fns['ready']
     os.remove(iostate_fns['ready'])
-
-    pickle_fn = '%s-data.pickle' % path_base
 
     wt = time.clock()
 

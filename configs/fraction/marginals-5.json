@@ -1,6 +1,6 @@
 {
   "file": {
-    "slice_size": 1000,
+    "slice_size": 5000,
     "qsub_walltime": "1:00:00",
     "wait_interval": 2
   },
