@@ -491,7 +491,7 @@ def manage_runs(config):
             open(run_fn, 'a').close()
 
             print '\t%d / %d: Letting %s write.' % (
-                base_name, len(completed), nruns
+                len(completed), nruns, base_name
             )
 
             completed.add(base_name)
