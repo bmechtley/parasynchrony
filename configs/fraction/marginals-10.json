@@ -1,6 +1,8 @@
 {
   "file": {
-    "slice_size": 100
+    "slice_size": 100,
+    "qsub_walltime": "1:00:00",
+    "wait_interval": 5
   },
   "args": {
     "resolution": 10,

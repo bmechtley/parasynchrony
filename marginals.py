@@ -317,7 +317,7 @@ def run_slice(config, start, stop):
     # Tell the IO manager that we are waiting to write to disk.
     open(iostate_fns['waiting'], 'a').close()
 
-    sleep_time = config['args'].get('waitinterval', 5)
+    sleep_time = config['file'].get('wait_interval', 5)
 
     # TODO: Write io manager process.
     while True:
@@ -421,11 +421,13 @@ def generate_runs(config, runtype='qsub'):
         ])
         outfile.close()
     elif runtype is 'qsub':
+        walltime = config['file'].get('qsub_walltime', "1:00:00")
+
         # TODO: Test:  Dynamic log file path.
         outfile = open(script_path, 'w')
         outfile.writelines([
             '#PBS -N %s\n' % config['file']['name'],
-            '#PBS -l nodes=1,mem=1000m,walltime=1:00:00\n',
+            '#PBS -l nodes=1,mem=1000m,walltime=%s\n' % walltime),
             '#PBS -m n\n',
             '#PBS -S /bin/bash\n',
             '#PBS -d %s\n' % os.getcwd(),
@@ -471,7 +473,7 @@ def manage_runs(config):
     nc = ncalcs(config)
     nruns = len(range(0, nc, config['file']['slice_size']))
 
-    sleep_time = config['args'].get('waitinterval', 5)
+    sleep_time = config['file'].get('wait_interval', 5)
 
     while len(completed) < nruns:
         waiting = glob.glob('%s-*-waiting.txt' % cacheprefix)
