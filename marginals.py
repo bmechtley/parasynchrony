@@ -212,7 +212,7 @@ def run_slice(config, start, stop):
         print 'No manager file indicates I/O manager is not running. Quitting.'
         return
 
-    print 'Running: (%d, %d)'
+    print 'Running: (%d, %d)' % start, stop
     bt = time.clock()
 
     # All possible combinations of varying parameters. Values are the index of
@@ -319,73 +319,79 @@ def run_slice(config, start, stop):
 
     sleep_time = config['file'].get('wait_interval', 5)
 
-    # TODO: Write io manager process.
-    while True:
-        if os.path.exists(iostate_fns['ready']):
-            open(iostate_fns['writing'], 'a').close()
-
-            pickle_fn = '%s-data.pickle' % path_base
-
-            # Aggregate data.
-            if not os.path.exists(pickle_fn):
-                # First run to be saved. Just start with its data.
-                aggdata = dict(
-                    samplesleft=samplesleft,
-                    samples=samples,
-                    counts=counts,
-                    maxima=maxima,
-                    varkeys=varkeys,
-                    popkeys=popkeys,
-                    varkeyindices=varkeyindices,
-                    effectkeys=effectkeys,
-                    paramkeys=paramkeys
-                )
-            else:
-                # Add this run's data to the existing aggregate data.
-                aggdata = cPickle.load(open(pickle_fn, 'a'))
-
-                # Set these every time even though we only need to do so once.
-                for sampkey in samplings.keys():
-                    for popkey in popkeys:
-                        for effectkey in effectkeys:
-                            # Shorthand for global aggregate data.
-                            gsampsleft = aggdata['samplesleft'][sampkey][popkey][effectkey]
-                            gsamps = aggdata['samples'][sampkey][popkey][effectkey]
-                            gcounts = aggdata['counts'][sampkey][popkey][effectkey]
-                            gmaxima = aggdata['maxima'][sampkey][popkey][effectkey]
-
-                            # Shorthand for this run's data.
-                            csampsleft = samplesleft[sampkey][popkey][effectkey]
-                            csamps = samples[sampkey][popkey][effectkey]
-                            ccounts = counts[sampkey][popkey][effectkey]
-                            cmaxima = maxima[sampkey][popkey][effectkey]
-                            ncsamps = len(csamps) - csampsleft
-
-                            # Increment histograms.
-                            gcounts += ccounts
-
-                            # Gather samples.
-                            if ncsamps:
-                                gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
-                                samplesleft[sampkey][popkey][effectkey] -= ncsamps
-
-                            # Gather maxima.
-                            joined = np.array([gmaxima, cmaxima])
-
-                            argmaxima = np.tile(
-                                np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
-                                (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
-                            )
-
-                            maxima[sampkey][popkey][effectkey] = np.where(
-                                argmaxima, gmaxima, cmaxima
-                            )
-
-            cPickle.dump(aggdata, open(pickle_fn, 'w'))
-            os.remove(iostate_fns['ready'])
-            os.remove(iostate_fns['writing'])
-
+    # Wait for the I/O manager to tell us to write.
+    while not os.path.exists(iostate_fns['ready']):
         time.sleep(sleep_time)
+
+    open(iostate_fns['writing'], 'a').close()
+    os.remove(iostate_fns['ready'])
+
+    pickle_fn = '%s-data.pickle' % path_base
+
+    # Aggregate data.
+    if not os.path.exists(pickle_fn):
+        print '\tCreating new %s.' % pickle_fn
+
+        # First run to be saved. Just start with its data.
+        aggdata = dict(
+            samplesleft=samplesleft,
+            samples=samples,
+            counts=counts,
+            maxima=maxima,
+            varkeys=varkeys,
+            popkeys=popkeys,
+            varkeyindices=varkeyindices,
+            effectkeys=effectkeys,
+            paramkeys=paramkeys
+        )
+    else:
+        print '\tLoading existing %s.' % pickle_fn
+
+        # Add this run's data to the existing aggregate data.
+        aggdata = cPickle.load(open(pickle_fn, 'a'))
+
+        # Set these every time even though we only need to do so once.
+        for sampkey in samplings.keys():
+            for popkey in popkeys:
+                for effectkey in effectkeys:
+                    # Shorthand for global aggregate data.
+                    gsampsleft = aggdata['samplesleft'][sampkey][popkey][effectkey]
+                    gsamps = aggdata['samples'][sampkey][popkey][effectkey]
+                    gcounts = aggdata['counts'][sampkey][popkey][effectkey]
+                    gmaxima = aggdata['maxima'][sampkey][popkey][effectkey]
+
+                    # Shorthand for this run's data.
+                    csampsleft = samplesleft[sampkey][popkey][effectkey]
+                    csamps = samples[sampkey][popkey][effectkey]
+                    ccounts = counts[sampkey][popkey][effectkey]
+                    cmaxima = maxima[sampkey][popkey][effectkey]
+                    ncsamps = len(csamps) - csampsleft
+
+                    # Increment histograms.
+                    gcounts += ccounts
+
+                    # Gather samples.
+                    if ncsamps:
+                        gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
+                        samplesleft[sampkey][popkey][effectkey] -= ncsamps
+
+                    # Gather maxima.
+                    joined = np.array([gmaxima, cmaxima])
+
+                    argmaxima = np.tile(
+                        np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
+                        (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
+                    )
+
+                    maxima[sampkey][popkey][effectkey] = np.where(
+                        argmaxima, gmaxima, cmaxima
+                    )
+
+        print '\tWriting to %s.' % pickle_fn
+        cPickle.dump(aggdata, open(pickle_fn, 'w'))
+
+        print '\tRemoving %s.' % iostate_fns['writing']
+        os.remove(iostate_fns['writing'])
 
     print 'Time elapsed:', time.clock() - bt
 
