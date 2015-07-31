@@ -331,6 +331,8 @@ def run_slice(config, start, stop):
 
     pickle_fn = '%s-data.pickle' % path_base
 
+    wt = time.clock()
+
     # Aggregate data.
     if not os.path.exists(pickle_fn):
         print '\tCreating new %s.' % pickle_fn
@@ -401,6 +403,7 @@ def run_slice(config, start, stop):
     os.remove(iostate_fns['writing'])
 
     print 'Time elapsed:', time.clock() - bt
+    print 'Time writing to disk:', time.clock - wt
 
 
 def generate_runs(config, runtype='qsub'):
