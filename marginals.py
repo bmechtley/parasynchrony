@@ -465,7 +465,7 @@ def manage_runs(config):
 
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
     manager_fn = cacheprefix + '-manager.txt'
-    open(manager_fn).close()
+    open(manager_fn, 'a').close()
 
     completed = set()
 
@@ -622,7 +622,7 @@ def gather_runs(config):
         os.remove(os.path.splitext(cfn)[0] + '-complete.txt')
 
     # Save completion file.
-    open(os.path.splitext(cachepath)[0] + '-complete.txt').close()
+    open(os.path.splitext(cachepath)[0] + '-complete.txt', 'a').close()
 
 
 def main():
