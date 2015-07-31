@@ -9,9 +9,7 @@ Various utility helper functions shared between the different analysis scripts.
 
 import json
 import os.path
-import operator
 import itertools
-import functools
 import collections
 import multiprocessing
 
@@ -200,92 +198,6 @@ def decode_dict(data):
         rv[key] = value
 
     return rv
-
-
-def zero_storage_arrays(config):
-    """
-    Create a bunch of arrays of zeros for large marginal runs given a
-    configuration dict. See marginals.py or slices.py for more information on
-    how these config dictionariesare formatted.
-
-    :param config: (dict) configuration dict.
-    :return: (dict) dictionary containing:
-        counts: (np.array) storage of histogram
-        maxima: (np.array) storage of maxima
-        samples: (np.array) storage of random samples
-        samplesleft: (np.array) storage of how many random samples are left
-            to compute
-    """
-
-    # TODO: Which of these is actually used?? This or the one in marginals.py?
-
-    paramkeys = config['props']['paramkeys']
-    nparams = len(paramkeys)
-    paramres, samplings = [config['args'][k] for k in 'resolution', 'samplings']
-
-    # TODO: This is messy. Ideally, I'd be able to change which metrics are
-    #   returned in compute_metrics and have the structure of these
-    #   histograms automatically change. Easy fix is to wait to create
-    #   the matrices until we see the first dict of values returned.
-    popkeys, effectkeys = ('h', 'p'), ('Rhh', 'Rpp')
-
-    # Parameters that actually vary, their count, and their index within the
-    # ordered parameter list.
-    varkeys = config['props']['varkeys']
-    nvarkeys = len(varkeys)
-
-    # Construct the statistic matrices.
-    # varindex1, varindex2, paramindex1, paramindex2, ...
-    histshape = (nvarkeys, nvarkeys, paramres, paramres)
-
-    counts, maxima, samples, samplesleft = [
-        {
-            sampkey: {
-                popkey: {
-                    effectkey: None for effectkey in effectkeys
-                }
-                for popkey in popkeys
-            }
-            for sampkey in samplings
-        }
-        for _ in range(4)
-    ]
-
-    for popkey in popkeys:
-        for effectkey in effectkeys:
-            for sampkey, sampling in samplings.iteritems():
-                nsamples = int(sampling['nsamples'])
-                sampres = sampling['resolution']
-
-                counts[sampkey][popkey][effectkey] = np.zeros(
-                    histshape + (sampres,), dtype=int
-                )
-
-                # Store the list of argmax parameter values + the maximum metric
-                # value.
-                maxima[sampkey][popkey][effectkey] = np.zeros(
-                    histshape + (nparams + 1,), dtype=float
-                )
-
-                # Random samples are for the entire hypercube and not for each
-                # marginal. Store the list of parameter values + the metric
-                # value.
-                samples[sampkey][popkey][effectkey] = np.zeros(
-                    (nsamples, nparams + 1), dtype=float
-                )
-
-                # How many samples we have left to compute. Decrements. Note
-                # that this may not actually reach zero, so it'll be important
-                # to check it when plotting. Samples will start from the end,
-                # as they are placed at samplesleft.
-                samplesleft[sampkey][popkey][effectkey] = nsamples
-
-    return dict(
-        counts=counts,
-        maxima=maxima,
-        samples=samples,
-        samplesleft=samplesleft
-    )
 
 
 def load_config(configfile):

@@ -206,9 +206,13 @@ def run_slice(config, start, stop):
         values.
     """
 
-    print start
-    print stop
+    path_base = os.path.join(config['file']['dir'], config['file']['name'])
 
+    if not os.path.exists(path_base + '-manager.txt'):
+        print 'No manager file indicates I/O manager is not running. Quitting.'
+        return
+
+    print 'Running: (%d, %d)'
     bt = time.clock()
 
     # All possible combinations of varying parameters. Values are the index of
@@ -305,44 +309,86 @@ def run_slice(config, start, stop):
                 if np.isfinite(binindex):
                     ind_counts[vkis + vkargis + (binindex,)] += 1
 
-    fnkeys = (
-        os.path.join(config['file']['dir'], config['file']['name']),
-        start,
-        stop
-    )
+    iostate_fns = {
+        state: '%s-%d-%d-%s.txt' % (path_base, start, stop, state)
+        for state in ['waiting', 'writing', 'run']
+    }
 
-    # Write the pickle file.
-    cPickle.dump(
-        dict(
-            counts=counts,
-            maxima=maxima,
-            samples=samples,
-            samplesleft=samplesleft,
-            sampkeys=samplings.keys(),
-            paramkeys=paramkeys,
-            varkeys=varkeys,
-            popkeys=popkeys,
-            effectkeys=effectkeys,
-            varkeyindices=varkeyindices
-        ),
-        open('%s-%d-%d.pickle' % fnkeys, 'w')
-    )
+    # Tell the IO manager that we are waiting to write to disk.
+    open(iostate_fns['waiting'], 'a').close()
 
-    # Write the completion file.
-    open('%s-%d-%d-complete.txt' % fnkeys, 'a').close()
+    sleep_time = config['args'].get('waitinterval', 5)
 
-    gather_size = int(config['file']['gather_size'])
+    # TODO: Write io manager process.
+    while True:
+        if os.path.exists(iostate_fns['run']):
+            open(iostate_fns['writing'], 'a').close()
+            os.remove(iostate_fns['waiting'])
 
-    if (
-        start % gather_size is 0 or
-        stop % gather_size is 0 or
-        ((start / gather_size) + 1) * gather_size < stop
-    ):
-        gather_low = (start / gather_size) * gather_size
-        gather_high = gather_low + gather_size
-        gather_runs(config, gather_low, gather_high)
+            pickle_fn = '%s-data.pickle' % path_base
 
-    print time.clock() - bt
+            # Aggregate data.
+            if not os.path.exists(pickle_fn):
+                # First run to be saved. Just start with its data.
+                aggdata = dict(
+                    samplesleft=samplesleft,
+                    samples=samples,
+                    counts=counts,
+                    maxima=maxima,
+                    varkeys=varkeys,
+                    popkeys=popkeys,
+                    varkeyindices=varkeyindices,
+                    effectkeys=effectkeys,
+                    paramkeys=paramkeys
+                )
+            else:
+                # Add this run's data to the existing aggregate data.
+                aggdata = cPickle.load(open(pickle_fn, 'a'))
+
+                # Set these every time even though we only need to do so once.
+                for sampkey in samplings.keys():
+                    for popkey in popkeys:
+                        for effectkey in effectkeys:
+                            # Shorthand for global aggregate data.
+                            gsampsleft = aggdata['samplesleft'][sampkey][popkey][effectkey]
+                            gsamps = aggdata['samples'][sampkey][popkey][effectkey]
+                            gcounts = aggdata['counts'][sampkey][popkey][effectkey]
+                            gmaxima = aggdata['maxima'][sampkey][popkey][effectkey]
+
+                            # Shorthand for this run's data.
+                            csampsleft = samplesleft[sampkey][popkey][effectkey]
+                            csamps = samples[sampkey][popkey][effectkey]
+                            ccounts = counts[sampkey][popkey][effectkey]
+                            cmaxima = maxima[sampkey][popkey][effectkey]
+                            ncsamps = len(csamps) - csampsleft
+
+                            # Increment histograms.
+                            gcounts += ccounts
+
+                            # Gather samples.
+                            if ncsamps:
+                                gsamps[gsampsleft-ncsamps:gsampsleft] = csamps
+                                samplesleft[sampkey][popkey][effectkey] -= ncsamps
+
+                            # Gather maxima.
+                            joined = np.array([gmaxima, cmaxima])
+
+                            argmaxima = np.tile(
+                                np.argmax(joined[..., -1], axis=0)[..., np.newaxis],
+                                (1,) * (len(gmaxima.shape) - 1) + (gmaxima.shape[-1],)
+                            )
+
+                            maxima[sampkey][popkey][effectkey] = np.where(
+                                argmaxima, gmaxima, cmaxima
+                            )
+
+            cPickle.dump(aggdata, open(pickle_fn, 'w'))
+            os.remove(iostate_fns['run'])
+            os.remove(iostate_fns['writing'])
+
+        time.sleep(sleep_time)
+
+    print 'Time elapsed:', time.clock() - bt
 
 
 def generate_runs(config, runtype='qsub'):
@@ -401,7 +447,58 @@ def generate_runs(config, runtype='qsub'):
         outfile.close()
 
 
-def gather_runs(config, gather_low=None, gather_high=None):
+def manage_runs(config):
+    """
+    Manage I/O for runs. Runs will write an empty file to disk saying they are
+    waiting to write to the main aggregate file. This will pick the first one,
+    make sure another file isn't already writing (by existence of an empty
+    "writing" file), and tell it to start running (by writing to an empty "run"
+    file).
+
+    :param config: (dict) configuration dictionary.
+    """
+
+    print 'Run manager.'
+    bt = time.clock()
+
+    cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
+    manager_fn = cacheprefix + '-manager.txt'
+    open(manager_fn).close()
+
+    completed = set()
+
+    # TODO: nruns
+    nc = ncalcs(config)
+    nruns = len(range(0, nc, config['file']['slice_size']))
+
+    sleep_time = config['args'].get('waitinterval', 5)
+
+    while len(completed) < nruns:
+        waiting = glob.glob('%s-*-waiting.txt' % cacheprefix)
+
+        if len(waiting):
+            # Wait for another job to finish writing first.
+            writing = glob.glob('%s-*-writing.txt' % cacheprefix)
+
+            while len(writing):
+                time.sleep(sleep_time)
+
+            # Tell our job it can write.
+            base_name = waiting[0].split('-waiting')[0]
+            run_fn = base_name + '-run.txt'
+            open(run_fn, 'a').close()
+
+            completed.add(base_name)
+        else:
+            # Wait for something to be waiting to write.
+            time.sleep(sleep_time)
+
+    os.remove(manager_fn)
+
+    print 'Elapsed time:', time.clock() - bt
+
+
+def gather_runs(config):
     """
     :param config:
     :param gather_low:
@@ -412,46 +509,50 @@ def gather_runs(config, gather_low=None, gather_high=None):
 
     cacheprefix = os.path.join(config['file']['dir'], config['file']['name'])
 
-    storage_arrays = utilities.zero_storage_arrays(config)
+    storage_arrays = zero_storage_arrays(config)
     counts, maxima, samples, samplesleft = [storage_arrays[k] for k in (
         'counts', 'maxima', 'samples', 'samplesleft'
     )]
 
     # Gather statistic arrays in each run's cache file.
-    cfns = glob.glob(cacheprefix + '*.pickle')
-    gathered_cfns = []
+    pickle_fns = glob.glob(cacheprefix + '*.pickle')
 
-    varkeys, paramkeys, sampkeys = [], [], []
-    varkeyindices = dict()
+    gathered_fns = []
 
-    if not len(cfns):
-        return
+    gathered_dict = dict()
 
-    for i, cfn in enumerate(cfns):
-        completion_fn = os.path.splitext(cfn)[0] + '-complete.txt'
+    for pickle_index, pickle_fn in enumerate(pickle_fns):
+        pickle_name = os.path.splitext(pickle_fn)[0]
+        completion_fn = pickle_name + '-complete.txt'
+        waiting_fn = pickle_name + '-waiting.txt'
+        run_fn = pickle_name + '-run.txt'
 
+        outstr = '\t%d / %d: %s' % pickle_index, len(pickle_fns), pickle_fn
+
+        # Skip pickle files that aren't done writing to disk.
         if not os.path.isfile(completion_fn):
+            print outstr, 'incomplete. Skipping.'
             continue
-        else:
-            if gather_low is not None and gather_high is not None:
-                low = cfn.split('-')
-                if low < gather_low or low > gather_high:
-                    continue
 
-        cf = cPickle.load(open(cfn))
-        print '\t%d / %d: %s' % (i, len(cfns), cfn)
+        cf = cPickle.load(open(pickle_fn))
+
+        # Skip pickle files that don't appear to be from a marginal run.
+        try:
+            for k in [
+                'sampkeys', 'popkeys', 'effectkeys',
+                'paramkeys', 'varkeys', 'varkeyindices'
+            ]:
+                gathered_dict.setdefault(k, cf[k])
+        except KeyError:
+            print outstr, 'is of the wrong format. Skipping.'
+            continue
+
+        print outstr
 
         # Set these every time even though we only need to do so once.
-        popkeys = cf['popkeys']
-        effectkeys = cf['effectkeys']
-        varkeys = cf['varkeys']
-        varkeyindices = cf['varkeyindices']
-        paramkeys = cf['paramkeys']
-        sampkeys = cf['sampkeys']
-
-        for sampkey in sampkeys:
-            for popkey in popkeys:
-                for effectkey in effectkeys:
+        for sampkey in cf['sampkeys']:
+            for popkey in cf['popkeys']:
+                for effectkey in cf['effectkeys']:
                     # Shorthand for global arrays over all cached values.
                     gsampsleft = samplesleft[sampkey][popkey][effectkey]
                     gsamps = samples[sampkey][popkey][effectkey]
@@ -487,12 +588,13 @@ def gather_runs(config, gather_low=None, gather_high=None):
                     )
 
     # Write the gathered pickle file.
-    if gather_low is not None and gather_high is not None:
-        cachepath = '%s-gathered-%d-%d.pickle' % (
-            cacheprefix, gather_low, gather_high
-        )
-    else:
-        cachepath = "%s-gathered-all.pickle" % cacheprefix
+    cachepath = '%s-gathered-%d.pickle' % (
+        cacheprefix,
+        max([
+            int(os.path.splitext(fn)[0].split('-')[-1])
+            for fn in glob.glob('%s-gathered-*.pickle' % cacheprefix)
+        ]) + 1
+    )
 
     cPickle.dump(
         dict(
@@ -500,12 +602,12 @@ def gather_runs(config, gather_low=None, gather_high=None):
             maxima=maxima,
             samples=samples,
             samplesleft=samplesleft,
-            varkeys=varkeys,
-            sampkeys=sampkeys,
-            paramkeys=paramkeys,
-            popkeys=popkeys,
-            varkeyindices=varkeyindices,
-            effectkeys=effectkeys
+            varkeys=cf['varkeys'],
+            sampkeys=cf['sampkeys'],
+            paramkeys=cf['paramkeys'],
+            popkeys=cf['popkeys'],
+            varkeyindices=cf['varkeyindices'],
+            effectkeys=cf['effectkeys']
         ),
         open(cachepath, 'w')
     )
@@ -538,8 +640,10 @@ def main():
         generate_runs(config, runtype=runtype)
     elif sys.argv[1] == 'gather' and len(sys.argv) == 3:
         gather_runs(config)
+    elif sys.argv[1] == 'manage' and len(sys.argv) == 3:
+        manage_runs(config)
     else:
-        print 'usage: python marginals.py {genruns, runs, gather}', \
+        print 'usage: python marginals.py {genruns, run, gather, manage}', \
             'config.json [start] [stop]'
 
 if __name__ == '__main__':
