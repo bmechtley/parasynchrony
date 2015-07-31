@@ -403,7 +403,7 @@ def run_slice(config, start, stop):
     os.remove(iostate_fns['writing'])
 
     print 'Time elapsed:', time.clock() - bt
-    print 'Time writing to disk:', time.clock - wt
+    print 'Time writing to disk:', time.clock() - wt
 
 
 def generate_runs(config, runtype='qsub'):
