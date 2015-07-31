@@ -427,7 +427,7 @@ def generate_runs(config, runtype='qsub'):
         outfile = open(script_path, 'w')
         outfile.writelines([
             '#PBS -N %s\n' % config['file']['name'],
-            '#PBS -l nodes=1,mem=1000m,walltime=%s\n' % walltime),
+            '#PBS -l nodes=1,mem=1000m,walltime=%s\n' % walltime,
             '#PBS -m n\n',
             '#PBS -S /bin/bash\n',
             '#PBS -d %s\n' % os.getcwd(),
