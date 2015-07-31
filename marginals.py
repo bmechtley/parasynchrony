@@ -323,7 +323,10 @@ def run_slice(config, start, stop):
     while not os.path.exists(iostate_fns['ready']):
         time.sleep(sleep_time)
 
+    print "\tWriting %s." % iostate_fns['writing']
     open(iostate_fns['writing'], 'a').close()
+
+    print '\tRemoving %s.' % iostate_fns['ready']
     os.remove(iostate_fns['ready'])
 
     pickle_fn = '%s-data.pickle' % path_base
@@ -387,11 +390,11 @@ def run_slice(config, start, stop):
                         argmaxima, gmaxima, cmaxima
                     )
 
-        print '\tWriting to %s.' % pickle_fn
-        cPickle.dump(aggdata, open(pickle_fn, 'w'))
+    print '\tWriting to %s.' % pickle_fn
+    cPickle.dump(aggdata, open(pickle_fn, 'w'))
 
-        print '\tRemoving %s.' % iostate_fns['writing']
-        os.remove(iostate_fns['writing'])
+    print '\tRemoving %s.' % iostate_fns['writing']
+    os.remove(iostate_fns['writing'])
 
     print 'Time elapsed:', time.clock() - bt
 
