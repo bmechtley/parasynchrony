@@ -435,7 +435,7 @@ def generate_runs(config, runtype='qsub'):
             '#PBS -o %s.out\n' % os.path.join(log_dir, config['file']['name']),
             '#PBS -t 0-%d\n' % ((nc + 1) / slice_size),
             ' '.join([
-                'python -W ignore marginals.py run',
+                'python -W ignore %s run' % os.path.realpath(__file__),
                 os.path.join(
                     os.getcwd(),
                     config['file']['dir'],
