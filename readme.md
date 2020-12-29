@@ -2,7 +2,7 @@
 
 Some tools for modeling population synchrony in host-parasitoid models. 
 
-- models.py: the meat. This module defines a StochasticModel, which uses
+- models.py: This module defines a StochasticModel, which uses
     SymPy to linearize a model expressed as a nonlinear difference equation
     around a stationary equilibrium point and compute its spectrum. The class
     Parasitism defines a few common host-parasitoid models as StochasticModels. 
